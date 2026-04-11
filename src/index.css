@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+    --color-soccer-red: #E10600;
+    --color-dark-bg: #0F0F0F;
+    --color-card-dark: #1A1A1A;
+    --color-card-light: #FFFFFF;
+}
+
+:root {
+    --bg-primary: #0F0F0F;
+    --text-primary: #FFFFFF;
+}
+
+[data-theme='light'] {
+    --bg-primary: #F5F5F7;
+    --text-primary: #121212;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.4s ease-in-out;
+    font-family: 'Inter', sans-serif;
+}
