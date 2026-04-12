@@ -9,7 +9,7 @@ import Stats from './pages/stats';
 import Media from './pages/media';
 import Contact from './pages/contact';
 import ThankYou from './pages/thankyou';
-import Login from './pages/login';
+import CRM from './pages/crm';
 
 const fallbackPlayer = {
   name: 'Kagisho Blom',
@@ -33,7 +33,9 @@ const fallbackPlayer = {
 const App = () => {
   const [player, setPlayer] = useState(null);
   const [theme, setTheme] = useState('dark');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => sessionStorage.getItem('crm_auth') === 'true'
+  );
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
@@ -53,12 +55,28 @@ const App = () => {
     }
   };
 
+  const handleLogin = () => {
+    sessionStorage.setItem('crm_auth', 'true');
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('crm_auth');
+    setIsAuthenticated(false);
+  };
+
   if (!player) return null;
 
   return (
     <Router>
       <div className={`min-h-screen transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0F0F0F]' : 'bg-white'}`}>
-        <Navbar theme={theme} setTheme={setTheme} player={player} />
+        <Navbar
+          theme={theme}
+          setTheme={setTheme}
+          player={player}
+          isAuthenticated={isAuthenticated}
+          onLogout={handleLogout}
+        />
         <main className="pt-32 pb-12 px-6 md:px-12 max-w-7xl mx-auto">
           <Routes>
             <Route path="/" element={<Home player={player} theme={theme} />} />
@@ -80,21 +98,27 @@ const App = () => {
   );
 };
 
-const AdminLogin = ({ setIsAuthenticated, theme }) => {
+const AdminLogin = ({ onLogin, theme }) => {
   const [key, setKey] = useState('');
+  const [error, setError] = useState('');
+
   const checkKey = (e) => {
     e.preventDefault();
-    if (key === 'blom22') setIsAuthenticated(true);
-    else alert('Access Denied');
+    if (key === 'blom22') {
+      onLogin();
+    } else {
+      setError('Invalid access key. Please try again.');
+      setKey('');
+    }
   };
 
   return (
     <div className="max-w-md mx-auto py-20 text-center">
       <form onSubmit={checkKey} className={`p-10 rounded-[40px] border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-xl'}`}>
-        <p className="text-soccer-red text-[10px] font-black uppercase tracking-[0.35em] mb-3">Login</p>
-        <h2 className={`text-3xl font-black uppercase mb-6 ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>Player Access</h2>
+        <p className="text-soccer-red text-[10px] font-black uppercase tracking-[0.35em] mb-3">CRM Login</p>
+        <h2 className={`text-3xl font-black uppercase mb-6 ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>Admin Access</h2>
         <input type="password" autoComplete="current-password" placeholder="Access Key" className={`w-full p-4 rounded-xl mb-4 bg-transparent border border-soccer-red/30 outline-none ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`} onChange={(e) => setKey(e.target.value)} />
-        <button className="w-full py-4 bg-soccer-red text-white font-bold rounded-xl uppercase">login</button>
+        <button className="w-full py-4 bg-soccer-red text-white font-bold rounded-xl uppercase">Open CRM</button>
       </form>
     </div>
   );
