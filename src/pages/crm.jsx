@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import {
-  Activity, AtSign, Award, BarChart3, Camera, FileText,
-  Footprints, Globe2, Hash, Link as LinkIcon, LogOut, Mail,
-  Phone, Ruler, Save, Shield, Terminal, User, Users, Weight
-} from 'lucide-react';
+import { Activity, AtSign, Award, ChartBar as BarChart3, Camera, FileText, Footprints, Globe as Globe2, Hash, Link as LinkIcon, LogOut, Mail, Phone, Ruler, Save, Shield, Terminal, User, Users, Weight } from 'lucide-react';
 import CRMInput from '../components/crminput';
 
 const TABS = ['Profile', 'Leads', 'Terminal'];
