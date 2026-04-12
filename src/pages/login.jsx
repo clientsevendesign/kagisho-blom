@@ -10,7 +10,7 @@ const Login = ({ player, theme, refreshData }) => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3001/api/update', formData);
+      await axios.post('/api/update', formData);
       alert("Profile updated successfully!");
       refreshData();
     } catch (err) {

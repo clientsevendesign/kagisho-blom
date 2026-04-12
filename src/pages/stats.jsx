@@ -70,4 +70,4 @@ const ProgressBar = ({ label, percent, theme, isValue }) => (
   </div>
 );
 
-export default stats;
+export default StatboxPage;

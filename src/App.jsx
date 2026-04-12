@@ -23,7 +23,7 @@ const App = () => {
   }, [theme]);
 
   const fetchPlayerData = () => {
-    axios.get('http://localhost:3001/api/player')
+    axios.get('/api/player')
       .then(res => setPlayer(res.data || {}))
       .catch(() => setPlayer({ name: "Kagisho Blom", club: "Offline Mode" }));
   };

@@ -17,7 +17,7 @@ const Contact = ({ player, theme, setHasSubmitted }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:3001/api/contact', formData);
+      const res = await axios.post('/api/contact', formData);
       if (res.data.success) {
         setHasSubmitted(true); // Unlocks the restricted route
         navigate('/thank-you');
