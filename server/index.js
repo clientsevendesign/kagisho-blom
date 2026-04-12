@@ -1,9 +1,17 @@
 import express from 'express';
 import cors from 'cors';
-import { getPlayer, updatePlayer } from './db.js';
-import * as Brevo from '@getbrevo/brevo';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import * as Brevo from '@getbrevo/brevo';
+import {
+  getPlayer,
+  updatePlayer,
+  saveContactLead,
+  getContactLeads,
+  markLeadRead,
+  saveLog,
+  getLogs
+} from './db.js';
 
 const app = express();
 app.use(cors());
@@ -15,25 +23,52 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '..', 'dist');
 
-let apiInstance = null;
+const sseClients = new Set();
+
+const broadcast = (entry) => {
+  const payload = `data: ${JSON.stringify(entry)}\n\n`;
+  for (const res of sseClients) {
+    try { res.write(payload); } catch { sseClients.delete(res); }
+  }
+};
+
+const log = (level, message, meta = null) => {
+  const entry = { level, message, meta, created_at: new Date().toISOString() };
+  const label = `[${level.toUpperCase()}]`;
+  if (level === 'error') console.error(label, message, meta || '');
+  else if (level === 'warn') console.warn(label, message, meta || '');
+  else console.log(label, message, meta || '');
+  broadcast(entry);
+  saveLog(level, message, meta);
+};
+
+app.use((req, _res, next) => {
+  if (!req.path.startsWith('/api/logs')) {
+    log('info', `${req.method} ${req.path}`, { ip: req.ip });
+  }
+  next();
+});
+
+let brevoApi = null;
 if (process.env.BREVO_API_KEY && Brevo.TransactionalEmailsApi) {
-  apiInstance = new Brevo.TransactionalEmailsApi();
-  apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+  brevoApi = new Brevo.TransactionalEmailsApi();
+  brevoApi.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+  log('info', 'Brevo email service initialised');
+} else {
+  log('warn', 'BREVO_API_KEY not set – emails will be skipped');
 }
 
-const escapeHtml = (value = '') => String(value).replace(/[&<>"]/g, (char) => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;'
-}[char]));
+const escapeHtml = (value = '') =>
+  String(value).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const socialLink = (url, label) => url ? `<a href="${escapeHtml(url)}" style="color:#e10600;text-decoration:none;font-weight:700">${label}</a>` : '';
+const socialLink = (url, label) =>
+  url ? `<a href="${escapeHtml(url)}" style="color:#e10600;text-decoration:none;font-weight:700">${label}</a>` : '';
 
 app.get('/api/player', async (req, res) => {
   try {
     res.json(await getPlayer());
   } catch (error) {
+    log('error', 'GET /api/player failed', { message: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -46,6 +81,7 @@ app.get('/api/cv', async (req, res) => {
       .map(item => item.trim())
       .filter(Boolean);
 
+    log('info', 'CV generated', { player: player.name });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(`<!doctype html>
 <html>
@@ -106,66 +142,106 @@ app.get('/api/cv', async (req, res) => {
   </body>
 </html>`);
   } catch (error) {
+    log('error', 'GET /api/cv failed', { message: error.message });
     res.status(500).json({ error: error.message });
   }
 });
 
 app.post('/api/contact', async (req, res) => {
   const { name, email, message } = req.body;
-
   try {
     const player = await getPlayer();
 
-    if (apiInstance) {
-      await apiInstance.sendTransacEmail({
+    await saveContactLead({ name, email, message });
+    log('info', `New contact lead: ${name} <${email}>`);
+
+    if (brevoApi) {
+      await brevoApi.sendTransacEmail({
         sender: { name: 'Portfolio System', email: 'noreply@kagishoblom.com' },
         to: [
           { email: player.email || 'blomkagisho22@gmail.com' },
           { email: 'lebogangvictor23@gmail.com' }
         ],
         subject: `New Scout Inquiry: ${name}`,
-        htmlContent: `
-          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
-            <h2 style="color: #E63946;">New Lead Received</h2>
-            <p><strong>From:</strong> ${escapeHtml(name)}</p>
-            <p><strong>Email:</strong> ${escapeHtml(email)}</p>
-            <p><strong>Message:</strong> ${escapeHtml(message)}</p>
-          </div>`
+        htmlContent: `<div style="font-family:sans-serif;padding:20px;border:1px solid #eee">
+          <h2 style="color:#E63946">New Lead Received</h2>
+          <p><strong>From:</strong> ${escapeHtml(name)}</p>
+          <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+          <p><strong>Message:</strong> ${escapeHtml(message)}</p>
+        </div>`
       });
 
-      await apiInstance.sendTransacEmail({
+      await brevoApi.sendTransacEmail({
         sender: { name: `${player.name} Team`, email: 'contact@kagishoblom.com' },
         to: [{ email }],
         subject: 'We received your message',
-        htmlContent: `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2>Hello ${escapeHtml(name)},</h2>
-            <p>Thank you for reaching out. We have received your inquiry and will get back to you shortly.</p>
-          </div>`
+        htmlContent: `<div style="font-family:sans-serif;padding:20px">
+          <h2>Hello ${escapeHtml(name)},</h2>
+          <p>Thank you for reaching out. We have received your inquiry and will get back to you shortly.</p>
+        </div>`
       });
-    } else {
-      console.warn(`Contact form received without BREVO_API_KEY configured: ${name} <${email}>`);
+      log('info', `Confirmation email sent to ${email}`);
     }
 
-    res.json({ success: true, emailSent: Boolean(apiInstance) });
+    res.json({ success: true, emailSent: Boolean(brevoApi) });
   } catch (error) {
-    console.error('Brevo Error:', error);
-    res.status(500).json({ error: 'Failed to send email' });
+    log('error', 'POST /api/contact failed', { message: error.message });
+    res.status(500).json({ error: 'Failed to process contact submission' });
   }
 });
 
 app.post('/api/update', async (req, res) => {
   try {
     const player = await updatePlayer(req.body);
+    log('info', 'Player profile updated via CRM');
     res.json({ success: true, player });
+  } catch (error) {
+    log('error', 'POST /api/update failed', { message: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/leads', async (_req, res) => {
+  try {
+    res.json(await getContactLeads());
+  } catch (error) {
+    log('error', 'GET /api/leads failed', { message: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/leads/:id/read', async (req, res) => {
+  try {
+    await markLeadRead(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    log('error', 'PATCH /api/leads/:id/read failed', { message: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/logs', async (_req, res) => {
+  try {
+    res.json(await getLogs(200));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+app.get('/api/logs/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  sseClients.add(res);
+  req.on('close', () => sseClients.delete(res));
+});
+
 app.use(express.static(distPath));
-app.use((req, res) => {
+app.use((_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-app.listen(PORT, HOST, () => console.log(`Server running on ${HOST}:${PORT}`));
+app.listen(PORT, HOST, () => {
+  log('info', `Server started on ${HOST}:${PORT}`);
+});
