@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Phone, Send, User, Mail, MessageSquare } from 'lucide-react';
+import { Facebook, Instagram, Mail, MessageSquare, Phone, Send, User } from 'lucide-react';
 import axios from 'axios';
 
 const Contact = ({ player, theme, setHasSubmitted }) => {
@@ -10,6 +10,7 @@ const Contact = ({ player, theme, setHasSubmitted }) => {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
 
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+  const mutedColor = theme === 'dark' ? 'text-white/50' : 'text-neutral-500';
   const inputBg = theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-neutral-50 border-black/10';
 
   const handleSubmit = async (e) => {
@@ -19,33 +20,64 @@ const Contact = ({ player, theme, setHasSubmitted }) => {
     try {
       const res = await axios.post('/api/contact', formData);
       if (res.data.success) {
-        setHasSubmitted(true); // Unlocks the restricted route
+        setHasSubmitted(true);
         navigate('/thank-you');
       }
     } catch (err) {
-      alert("Error sending message. Please try WhatsApp.");
+      alert('Error sending message. Please try WhatsApp or social media.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div>
+          <p className="text-soccer-red text-[10px] font-black uppercase tracking-[0.35em] mb-4">Scouts and Clubs</p>
           <h2 className={`text-6xl font-black uppercase mb-6 ${textColor}`}>Contact</h2>
-          <a href={`https://wa.me/${player.whatsapp}`} className="flex items-center justify-center gap-3 w-full py-5 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-500 font-bold hover:bg-green-500/20 transition">
-            <Phone size={18} /> Official WhatsApp
-          </a>
+          <p className={`mb-8 leading-relaxed ${mutedColor}`}>Reach out directly for representation, scouting information, trials, interviews, or official football opportunities.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {player.whatsapp && (
+              <a href={`https://wa.me/${player.whatsapp}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 w-full py-5 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-500 font-bold hover:bg-green-500/20 transition">
+                <Phone size={18} /> WhatsApp
+              </a>
+            )}
+            {player.instagram && (
+              <a href={player.instagram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 w-full py-5 bg-pink-500/10 border border-pink-500/20 rounded-2xl text-pink-500 font-bold hover:bg-pink-500/20 transition">
+                <Instagram size={18} /> Instagram
+              </a>
+            )}
+            {player.facebook && (
+              <a href={player.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 w-full py-5 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-blue-500 font-bold hover:bg-blue-500/20 transition">
+                <Facebook size={18} /> Facebook
+              </a>
+            )}
+            {player.email && (
+              <a href={`mailto:${player.email}`} className="flex items-center justify-center gap-3 w-full py-5 bg-soccer-red/10 border border-soccer-red/20 rounded-2xl text-soccer-red font-bold hover:bg-soccer-red/20 transition">
+                <Mail size={18} /> Email
+              </a>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className={`p-8 rounded-[40px] border ${theme === 'dark' ? 'bg-soccer-grey border-white/5' : 'bg-white border-black/5 shadow-xl'}`}>
           <div className="space-y-4">
-            <input required type="text" placeholder="Full Name" className={`w-full p-4 rounded-xl border ${inputBg} ${textColor} outline-none`} onChange={e => setFormData({...formData, name: e.target.value})} />
-            <input required type="email" placeholder="Email" className={`w-full p-4 rounded-xl border ${inputBg} ${textColor} outline-none`} onChange={e => setFormData({...formData, email: e.target.value})} />
-            <textarea required rows="4" placeholder="Message" className={`w-full p-4 rounded-xl border ${inputBg} ${textColor} outline-none`} onChange={e => setFormData({...formData, message: e.target.value})} />
+            <div className="relative">
+              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soccer-red" />
+              <input required type="text" placeholder="Full Name" className={`w-full p-4 pl-12 rounded-xl border ${inputBg} ${textColor} outline-none`} onChange={e => setFormData({...formData, name: e.target.value})} />
+            </div>
+            <div className="relative">
+              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soccer-red" />
+              <input required type="email" placeholder="Email" className={`w-full p-4 pl-12 rounded-xl border ${inputBg} ${textColor} outline-none`} onChange={e => setFormData({...formData, email: e.target.value})} />
+            </div>
+            <div className="relative">
+              <MessageSquare size={16} className="absolute left-4 top-5 text-soccer-red" />
+              <textarea required rows="4" placeholder="Message" className={`w-full p-4 pl-12 rounded-xl border ${inputBg} ${textColor} outline-none`} onChange={e => setFormData({...formData, message: e.target.value})} />
+            </div>
             <button type="submit" disabled={loading} className="w-full py-5 bg-soccer-red text-white rounded-xl font-black uppercase hover:brightness-110 transition disabled:opacity-50">
-              {loading ? "Sending..." : "Send Inquiry"} <Send size={16} className="inline ml-2" />
+              {loading ? 'Sending...' : 'Send Inquiry'} <Send size={16} className="inline ml-2" />
             </button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 # Kagisho Blom Profile
 
 ## Overview
-React and Vite frontend with an Express API backend for player profile data, contact form handling, and profile updates.
+React and Vite frontend with an Express API backend for player profile data, contact form handling, CRM profile updates, and generated CV output.
 
 ## Project Structure
 - `src/`: React application pages and components
@@ -13,6 +13,11 @@ React and Vite frontend with an Express API backend for player profile data, con
 - Vite listens on `0.0.0.0:5000` and allows all hosts for the Replit preview proxy.
 - The Express API binds to `127.0.0.1:3001` during development and is proxied by Vite through `/api`.
 - Production builds the frontend into `dist` and serves it from the Express server.
+
+## CRM and CV
+- CRM is available at `/login` using the current access key in `src/App.jsx`.
+- CRM edits are saved through `POST /api/update` and immediately drive public frontend details.
+- Generated CV is available at `/api/cv` and uses the current saved CRM profile data.
 
 ## Data and Services
 - If `TURSO_DATABASE_URL` is provided, the backend uses Turso/libSQL.

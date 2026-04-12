@@ -11,21 +11,46 @@ import Contact from './pages/contact';
 import ThankYou from './pages/thankyou';
 import Login from './pages/login';
 
+const fallbackPlayer = {
+  name: 'Kagisho Blom',
+  club: 'Offline Mode',
+  goals: 0,
+  assists: 0,
+  recoveries: '0',
+  age: 26,
+  position: 'Midfielder',
+  pass_accuracy: '0%',
+  whatsapp: '27720000000',
+  jersey_number: '15',
+  work_rate: 'High/High',
+  nationality: 'South African',
+  preferred_foot: 'Right',
+  bio: 'Professional footballer profile currently loading local data.',
+  cv_summary: 'Professional footballer profile prepared for scouts, clubs, and representatives.',
+  is_available: 1
+};
+
 const App = () => {
   const [player, setPlayer] = useState(null);
   const [theme, setTheme] = useState('dark');
-  const [isAuthenticated, setIsAuthenticated] = useState(false); 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     fetchPlayerData();
+  }, []);
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const fetchPlayerData = () => {
-    axios.get('/api/player')
-      .then(res => setPlayer(res.data || {}))
-      .catch(() => setPlayer({ name: "Kagisho Blom", club: "Offline Mode" }));
+  const fetchPlayerData = async () => {
+    try {
+      const res = await axios.get('/api/player');
+      setPlayer({ ...fallbackPlayer, ...(res.data || {}) });
+    } catch {
+      setPlayer(fallbackPlayer);
+    }
   };
 
   if (!player) return null;
@@ -40,17 +65,11 @@ const App = () => {
             <Route path="/about" element={<About player={player} theme={theme} />} />
             <Route path="/stats" element={<Stats player={player} theme={theme} />} />
             <Route path="/media" element={<Media player={player} theme={theme} />} />
-            
-            {/* Contact page now sets hasSubmitted upon success */}
             <Route path="/contact" element={<Contact player={player} theme={theme} setHasSubmitted={setHasSubmitted} />} />
-            
-            {/* Restricted: Only accessible after form submission */}
             <Route path="/thank-you" element={hasSubmitted ? <ThankYou theme={theme} /> : <Navigate to="/contact" />} />
-            
-            {/* Restricted CRM: Requires Login */}
             <Route path="/login" element={
-              isAuthenticated ? 
-              <Login player={player} theme={theme} refreshData={fetchPlayerData} /> : 
+              isAuthenticated ?
+              <Login player={player} theme={theme} refreshData={fetchPlayerData} /> :
               <AdminLogin setIsAuthenticated={setIsAuthenticated} theme={theme} />
             } />
           </Routes>
@@ -61,20 +80,21 @@ const App = () => {
   );
 };
 
-// Password Gate for CRM
 const AdminLogin = ({ setIsAuthenticated, theme }) => {
-  const [key, setKey] = useState("");
+  const [key, setKey] = useState('');
   const checkKey = (e) => {
     e.preventDefault();
-    if (key === "blom22") setIsAuthenticated(true);
-    else alert("Access Denied");
+    if (key === 'blom22') setIsAuthenticated(true);
+    else alert('Access Denied');
   };
+
   return (
     <div className="max-w-md mx-auto py-20 text-center">
-      <form onSubmit={checkKey} className={`p-10 rounded-[40px] border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'}`}>
-        <h2 className="text-2xl font-black uppercase mb-6">Admin Access</h2>
-        <input type="password" placeholder="Access Key" className="w-full p-4 rounded-xl mb-4 bg-transparent border border-soccer-red/30 outline-none" onChange={(e) => setKey(e.target.value)} />
-        <button className="w-full py-4 bg-soccer-red text-white font-bold rounded-xl uppercase">Authorize</button>
+      <form onSubmit={checkKey} className={`p-10 rounded-[40px] border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-xl'}`}>
+        <p className="text-soccer-red text-[10px] font-black uppercase tracking-[0.35em] mb-3">CRM Login</p>
+        <h2 className={`text-3xl font-black uppercase mb-6 ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>Admin Access</h2>
+        <input type="password" placeholder="Access Key" className={`w-full p-4 rounded-xl mb-4 bg-transparent border border-soccer-red/30 outline-none ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`} onChange={(e) => setKey(e.target.value)} />
+        <button className="w-full py-4 bg-soccer-red text-white font-bold rounded-xl uppercase">Open CRM</button>
       </form>
     </div>
   );

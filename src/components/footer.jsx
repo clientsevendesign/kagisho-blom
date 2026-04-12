@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone } from 'lucide-react';
+import { Facebook, Instagram, Phone } from 'lucide-react';
 
 const Footer = ({ player, theme }) => {
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
@@ -13,22 +13,22 @@ const Footer = ({ player, theme }) => {
             {player.name}
           </h4>
           <p className={`text-[10px] uppercase tracking-[0.3em] font-bold ${subTextColor}`}>
-            © {new Date().getFullYear()} Athlete
+            © {new Date().getFullYear()} Athlete Profile
           </p>
         </div>
         <div className={`flex gap-10 items-center ${subTextColor}`}>
           {player.instagram && (
-            <a href={player.instagram} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition">
+            <a href={player.instagram} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition" aria-label="Instagram">
               <Instagram size={18} />
             </a>
           )}
           {player.facebook && (
-            <a href={player.facebook} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition">
+            <a href={player.facebook} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition" aria-label="Facebook">
               <Facebook size={18} />
             </a>
           )}
           {player.whatsapp && (
-            <a href={`https://wa.me/${player.whatsapp}`} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition">
+            <a href={`https://wa.me/${player.whatsapp}`} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition" aria-label="WhatsApp">
               <Phone size={18} />
             </a>
           )}
@@ -38,5 +38,4 @@ const Footer = ({ player, theme }) => {
   );
 };
 
-// This line resolves the "export named default" error in App.jsx
 export default Footer;
