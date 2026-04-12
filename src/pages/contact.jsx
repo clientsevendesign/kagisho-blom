@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Facebook, Instagram, Mail, MessageSquare, Phone, Send, User } from 'lucide-react';
+import { Camera, Mail, MessageSquare, Phone, Send, User } from 'lucide-react';
 import axios from 'axios';
 
 const Contact = ({ player, theme, setHasSubmitted }) => {
@@ -46,12 +46,12 @@ const Contact = ({ player, theme, setHasSubmitted }) => {
             )}
             {player.instagram && (
               <a href={player.instagram} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 w-full py-5 bg-pink-500/10 border border-pink-500/20 rounded-2xl text-pink-500 font-bold hover:bg-pink-500/20 transition">
-                <Instagram size={18} /> Instagram
+                <Camera size={18} /> Instagram
               </a>
             )}
             {player.facebook && (
               <a href={player.facebook} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-3 w-full py-5 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-blue-500 font-bold hover:bg-blue-500/20 transition">
-                <Facebook size={18} /> Facebook
+                <span className="text-lg font-black">f</span> Facebook
               </a>
             )}
             {player.email && (

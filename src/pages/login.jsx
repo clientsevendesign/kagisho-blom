@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Activity, AtSign, Award, BarChart3, Facebook, FileText, Footprints, Globe2, Hash, Instagram, Link as LinkIcon, Mail, Phone, Ruler, Save, Shield, User, Weight } from 'lucide-react';
+import { Activity, AtSign, Award, BarChart3, Camera, FileText, Footprints, Globe2, Hash, Link as LinkIcon, Mail, Phone, Ruler, Save, Shield, User, Weight } from 'lucide-react';
 import CRMInput from '../components/crminput';
 
 const Login = ({ player, theme, refreshData }) => {
@@ -68,8 +68,8 @@ const Login = ({ player, theme, refreshData }) => {
             <CRMInput theme={theme} label="Email" type="email" value={formData.email} onChange={v => updateField('email', v)} icon={<Mail size={14} />} />
             <CRMInput theme={theme} label="Phone" value={formData.phone} onChange={v => updateField('phone', v)} icon={<Phone size={14} />} />
             <CRMInput theme={theme} label="WhatsApp Number" value={formData.whatsapp} onChange={v => updateField('whatsapp', v)} icon={<Phone size={14} />} />
-            <CRMInput theme={theme} label="Instagram URL" value={formData.instagram} onChange={v => updateField('instagram', v)} icon={<Instagram size={14} />} />
-            <CRMInput theme={theme} label="Facebook URL" value={formData.facebook} onChange={v => updateField('facebook', v)} icon={<Facebook size={14} />} />
+            <CRMInput theme={theme} label="Instagram URL" value={formData.instagram} onChange={v => updateField('instagram', v)} icon={<Camera size={14} />} />
+            <CRMInput theme={theme} label="Facebook URL" value={formData.facebook} onChange={v => updateField('facebook', v)} icon={<span className="text-xs font-black">f</span>} />
           </Section>
 
           <Section title="Media and CV" theme={theme}>

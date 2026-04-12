@@ -93,7 +93,7 @@ const AdminLogin = ({ setIsAuthenticated, theme }) => {
       <form onSubmit={checkKey} className={`p-10 rounded-[40px] border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-xl'}`}>
         <p className="text-soccer-red text-[10px] font-black uppercase tracking-[0.35em] mb-3">CRM Login</p>
         <h2 className={`text-3xl font-black uppercase mb-6 ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>Admin Access</h2>
-        <input type="password" placeholder="Access Key" className={`w-full p-4 rounded-xl mb-4 bg-transparent border border-soccer-red/30 outline-none ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`} onChange={(e) => setKey(e.target.value)} />
+        <input type="password" autoComplete="current-password" placeholder="Access Key" className={`w-full p-4 rounded-xl mb-4 bg-transparent border border-soccer-red/30 outline-none ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`} onChange={(e) => setKey(e.target.value)} />
         <button className="w-full py-4 bg-soccer-red text-white font-bold rounded-xl uppercase">Open CRM</button>
       </form>
     </div>

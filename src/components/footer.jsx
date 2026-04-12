@@ -1,5 +1,5 @@
 import React from 'react';
-import { Facebook, Instagram, Phone } from 'lucide-react';
+import { Camera, Phone } from 'lucide-react';
 
 const Footer = ({ player, theme }) => {
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
@@ -19,12 +19,12 @@ const Footer = ({ player, theme }) => {
         <div className={`flex gap-10 items-center ${subTextColor}`}>
           {player.instagram && (
             <a href={player.instagram} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition" aria-label="Instagram">
-              <Instagram size={18} />
+              <Camera size={18} />
             </a>
           )}
           {player.facebook && (
             <a href={player.facebook} target="_blank" rel="noreferrer" className="hover:text-soccer-red transition" aria-label="Facebook">
-              <Facebook size={18} />
+              <span className="text-sm font-black">f</span>
             </a>
           )}
           {player.whatsapp && (
