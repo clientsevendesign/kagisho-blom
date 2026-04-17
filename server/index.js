@@ -22,7 +22,7 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*', credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 
 const PORT     = Number(process.env.PORT || 3001);
-const HOST     = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+const HOST     = '0.0.0.0';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const distPath   = path.join(__dirname, '..', 'dist');
@@ -352,7 +352,7 @@ Guidelines:
     }));
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
