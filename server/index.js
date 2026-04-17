@@ -11,7 +11,7 @@ import {
   getPreviousClubs, savePreviousClub, updatePreviousClub, deletePreviousClub,
   getFixtures, saveFixture, updateFixture, deleteFixture,
   getCommunityFollows, saveCommunityFollow, updateFollowStatus, getFollowByEmail,
-  getCommunityComments, saveCommunityComment, updateCommentStatus, deleteComment, deleteFollow,
+  getCommunityComments, saveCommunityComment, updateCommentStatus,
   getSiteSettings, setSiteSetting,
   bootstrapSchema,
 } from './db.js';
@@ -22,7 +22,7 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*', credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 
 const PORT     = Number(process.env.PORT || 3001);
-const HOST     = PORT === 3001 ? '127.0.0.1' : '0.0.0.0';
+const HOST     = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const distPath   = path.join(__dirname, '..', 'dist');
@@ -193,14 +193,6 @@ app.get('/api/previous-clubs', async (_req, res) => {
   catch (e) { res.status(500).json({error:e.message}); }
 });
 
-app.get('/api/community/followers', async (_req, res) => {
-  try {
-    const follows = await getCommunityFollows();
-    // Return only names of approved followers (no emails ever exposed)
-    res.json(follows.filter(f => f.status === 'approved').map(f => ({ id: f.id, name: f.name })));
-  } catch (e) { res.status(500).json({error:e.message}); }
-});
-
 app.get('/api/community/comments', async (_req, res) => {
   try { res.json(await getCommunityComments('approved')); }
   catch (e) { res.status(500).json({error:e.message}); }
@@ -211,32 +203,55 @@ app.get('/api/community/stats', async (_req, res) => {
     const follows  = await getCommunityFollows();
     const comments = await getCommunityComments();
     res.json({
-      totalFollowers:  follows.filter(f => f.status === 'approved').length,
-      pendingFollows:  follows.filter(f => f.status === 'pending').length,
+      totalFollowers: follows.filter(f => f.status === 'approved').length,
+      pendingFollows: follows.filter(f => f.status === 'pending').length,
       pendingComments: comments.filter(c => c.status === 'pending').length,
-      totalComments:   comments.filter(c => c.status === 'approved').length,
     });
   } catch (e) { res.status(500).json({error:e.message}); }
 });
 
-// POST /api/community/follow — name only, instant approval
+// POST /api/community/follow
 app.post('/api/community/follow', async (req, res) => {
-  const { name, message } = req.body || {};
-  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+  const { name, email, message } = req.body || {};
+  if (!name || !email) return res.status(400).json({ error: 'name and email required' });
   try {
-    await saveCommunityFollow({ name: name.trim(), message });
-    log('info', `New follower: ${name}`);
-    res.json({ success: true });
+    const existing = await getFollowByEmail(email);
+    if (existing) return res.json({ success: true, status: existing.status, existing: true });
+    await saveCommunityFollow({ name, email, message });
+    const player = await getPlayer();
+    // Notify Kagisho
+    await sendEmail({
+      to: player.email || 'blomkagisho22@gmail.com',
+      subject: `New Follow Request from ${name}`,
+      html: `<div style="font-family:sans-serif;padding:24px;border:1px solid #eee;border-radius:12px">
+        <h2 style="color:#e10600;margin-top:0">New Follow Request</h2>
+        <p><strong>${esc(name)}</strong> (${esc(email)}) wants to follow your profile.</p>
+        ${message ? `<p><em>"${esc(message)}"</em></p>` : ''}
+        <p>Review in your CRM → Community tab.</p>
+      </div>`,
+    });
+    res.json({ success: true, status: 'pending' });
   } catch (e) { log('error','POST /api/community/follow',{message:e.message}); res.status(500).json({error:e.message}); }
 });
 
-// POST /api/community/comment — name only, instant, no approval
+// POST /api/community/comment
 app.post('/api/community/comment', async (req, res) => {
-  const { name, comment } = req.body || {};
-  if (!name?.trim() || !comment?.trim()) return res.status(400).json({ error: 'name and comment required' });
+  const { name, email, comment } = req.body || {};
+  if (!name || !email || !comment) return res.status(400).json({ error: 'name, email and comment required' });
   try {
-    await saveCommunityComment({ name: name.trim(), comment: comment.trim() });
-    log('info', `New comment from ${name}`);
+    const follow = await getFollowByEmail(email);
+    await saveCommunityComment({ name, email, comment, follow_id: follow?.id || null });
+    const player = await getPlayer();
+    await sendEmail({
+      to: player.email || 'blomkagisho22@gmail.com',
+      subject: `New Comment from ${name}`,
+      html: `<div style="font-family:sans-serif;padding:24px;border:1px solid #eee;border-radius:12px">
+        <h2 style="color:#e10600;margin-top:0">New Comment Awaiting Approval</h2>
+        <p><strong>${esc(name)}</strong> (${esc(email)}) commented:</p>
+        <blockquote style="border-left:3px solid #e10600;padding-left:12px;margin:12px 0">${esc(comment)}</blockquote>
+        <p>Review in your CRM → Community tab.</p>
+      </div>`,
+    });
     res.json({ success: true });
   } catch (e) { log('error','POST /api/community/comment',{message:e.message}); res.status(500).json({error:e.message}); }
 });
@@ -545,12 +560,6 @@ app.get('/api/crm/community/comments', requireAuth, async (_req, res) => {
 });
 app.patch('/api/crm/community/comments/:id', requireAuth, async (req, res) => {
   try { await updateCommentStatus(req.params.id, req.body.status); res.json({ success: true }); } catch (e) { res.status(500).json({error:e.message}); }
-});
-app.delete('/api/crm/community/comments/:id', requireAuth, async (req, res) => {
-  try { await deleteComment(req.params.id); res.json({ success: true }); } catch (e) { res.status(500).json({error:e.message}); }
-});
-app.delete('/api/crm/community/follows/:id', requireAuth, async (req, res) => {
-  try { await deleteFollow(req.params.id); res.json({ success: true }); } catch (e) { res.status(500).json({error:e.message}); }
 });
 
 // Leads
