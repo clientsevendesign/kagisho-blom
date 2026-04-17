@@ -1,267 +1,1259 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { Activity, AtSign, Award, ChartBar as BarChart3, Camera, FileText, Footprints, Globe as Globe2, Hash, Link as LinkIcon, LogOut, Mail, Phone, Ruler, Save, Shield, Terminal, User, Users, Weight } from 'lucide-react';
+import {
+  Activity, AtSign, Award, BarChart3, Bot, Camera, Calendar,
+  CheckCircle, ChevronDown, ChevronUp, FileText, Film, Footprints,
+  Globe2, Hash, Image, LinkIcon, LogOut, Mail, MapPin, MessageCircle,
+  Palette, Phone, Plus, Ruler, Save, Shield, Trash2, TrendingUp,
+  Upload, User, Users, Weight, X, XCircle, Zap,
+} from 'lucide-react';
 import CRMInput from '../components/crminput';
 
-const TABS = ['Profile', 'Leads', 'Terminal'];
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'kagisho_media';
+// AI calls go through the server /api/chat endpoint (Gemini key stays server-side)
 
-const CRM = ({ player, theme, refreshData, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('Profile');
+const TABS = [
+  { id: 'Dashboard', icon: Bot, label: 'AI Dashboard' },
+  { id: 'Profile', icon: User, label: 'Profile' },
+  { id: 'Stats', icon: BarChart3, label: 'Stats' },
+  { id: 'Achievements', icon: Award, label: 'Achievements' },
+  { id: 'Clubs', icon: Shield, label: 'Club History' },
+  { id: 'Fixtures', icon: Calendar, label: 'Fixtures' },
+  { id: 'Media', icon: Camera, label: 'Media' },
+  { id: 'Trends', icon: TrendingUp, label: 'Trends' },
+  { id: 'Community', icon: Users, label: 'Community' },
+  { id: 'Leads', icon: Mail, label: 'Leads' },
+  { id: 'Settings', icon: Palette, label: 'Settings' },
+];
+
+const MEDIA_CATEGORIES = [
+  { id: 'photo', label: 'Photo', icon: Image, accept: 'image/*' },
+  { id: 'video', label: 'Video', icon: Film, accept: 'video/*' },
+  { id: 'certificate', label: 'Certificate', icon: Award, accept: '.pdf,image/*' },
+  { id: 'press', label: 'Press', icon: FileText, accept: 'image/*,.pdf' },
+];
+
+// ── CRM Shell ─────────────────────────────────────────────────────────────────
+
+const CRM = ({ player, theme, accentColor, settings, refreshData, refreshSettings, onLogout }) => {
+  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [communityBadge, setCommunityBadge] = useState(0);
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
   const panelClass = theme === 'dark' ? 'bg-[#111] border-white/5' : 'bg-neutral-50 border-black/5';
+
+  useEffect(() => {
+    axios.get('/api/community/stats').then(r => {
+      const d = r.data || {};
+      setCommunityBadge((d.pendingFollows || 0) + (d.pendingComments || 0));
+    }).catch(() => { });
+  }, []);
+
+  const handleLogoutClick = () => setLogoutConfirm(true);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className={`p-8 rounded-[40px] border ${panelClass}`}>
+
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <p className="text-soccer-red text-[10px] font-black uppercase tracking-[0.35em] mb-2">Private CRM</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-2" style={{ color: accentColor }}>Private CRM</p>
             <h2 className={`text-4xl font-black uppercase ${textColor}`}>Control Panel</h2>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href="/api/cv"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-2xl bg-white text-black px-5 py-3 font-black uppercase text-[10px] tracking-widest hover:bg-soccer-red hover:text-white transition"
-            >
-              <FileText size={14} /> CV
+            <a href="/api/cv" target="_blank" rel="noreferrer"
+              className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black uppercase text-[10px] tracking-widest transition hover:text-white ${theme === 'dark' ? 'bg-white text-black hover:bg-soccer-red' : 'bg-neutral-900 text-white hover:bg-soccer-red'}`}>
+              <FileText size={14} /> Scout CV
             </a>
-            <button
-              onClick={onLogout}
-              className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black uppercase text-[10px] tracking-widest border transition ${
-                theme === 'dark'
-                  ? 'border-white/10 text-white/50 hover:border-soccer-red hover:text-soccer-red'
-                  : 'border-black/10 text-neutral-500 hover:border-soccer-red hover:text-soccer-red'
-              }`}
-            >
+            <button onClick={handleLogoutClick}
+              className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black uppercase text-[10px] tracking-widest border transition ${theme === 'dark' ? 'border-white/10 text-white/50 hover:border-red-500 hover:text-red-500' : 'border-black/10 text-neutral-500 hover:border-red-500 hover:text-red-500'}`}>
               <LogOut size={14} /> Logout
             </button>
           </div>
         </div>
 
-        <div className="flex gap-1 mb-8 p-1 rounded-2xl w-fit bg-black/10">
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${
-                activeTab === tab
-                  ? 'bg-soccer-red text-white shadow-lg'
-                  : theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
-              }`}
-            >
-              {tab === 'Profile' && <User size={10} className="inline mr-1.5" />}
-              {tab === 'Leads' && <Users size={10} className="inline mr-1.5" />}
-              {tab === 'Terminal' && <Terminal size={10} className="inline mr-1.5" />}
-              {tab}
+        {/* Tab bar */}
+        <div className="flex flex-wrap gap-1 mb-8 p-1 rounded-2xl w-fit bg-black/10 max-w-full overflow-x-auto">
+          {TABS.map(({ id, icon: Icon, label }) => (
+            <button key={id} onClick={() => setActiveTab(id)}
+              className={`relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === id ? 'text-white shadow-lg' : theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+                }`}
+              style={activeTab === id ? { backgroundColor: accentColor } : {}}>
+              <Icon size={10} /> {label}
+              {id === 'Community' && communityBadge > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-black">
+                  {communityBadge}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {activeTab === 'Profile' && (
-          <ProfileTab player={player} theme={theme} refreshData={refreshData} />
-        )}
-        {activeTab === 'Leads' && (
-          <LeadsTab theme={theme} />
-        )}
-        {activeTab === 'Terminal' && (
-          <TerminalTab theme={theme} />
-        )}
+        {/* Content */}
+        {activeTab === 'Dashboard' && <DashboardTab player={player} theme={theme} accentColor={accentColor} />}
+        {activeTab === 'Profile' && <ProfileTab player={player} theme={theme} accentColor={accentColor} refreshData={refreshData} settings={settings} refreshSettings={refreshSettings} />}
+        {activeTab === 'Stats' && <StatsTab player={player} theme={theme} accentColor={accentColor} refreshData={refreshData} />}
+        {activeTab === 'Achievements' && <AchievementsTab player={player} theme={theme} accentColor={accentColor} refreshData={refreshData} />}
+        {activeTab === 'Clubs' && <ClubsTab theme={theme} accentColor={accentColor} />}
+        {activeTab === 'Fixtures' && <FixturesTab theme={theme} accentColor={accentColor} playerClub={player.club} />}
+        {activeTab === 'Media' && <MediaTab theme={theme} accentColor={accentColor} />}
+        {activeTab === 'Trends' && <TrendsTab theme={theme} accentColor={accentColor} />}
+        {activeTab === 'Community' && <CommunityTab theme={theme} accentColor={accentColor} player={player} onBadgeUpdate={setCommunityBadge} />}
+        {activeTab === 'Leads' && <LeadsTab theme={theme} accentColor={accentColor} />}
+        {activeTab === 'Settings' && <SettingsTab theme={theme} accentColor={accentColor} settings={settings} refreshSettings={refreshSettings} player={player} />}
+      </div>
+
+      {/* Logout confirm modal */}
+      {logoutConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLogoutConfirm(false)}>
+          <div className={`p-10 rounded-[40px] border max-w-sm w-full text-center ${panelClass}`} onClick={e => e.stopPropagation()}>
+            <LogOut size={32} className="mx-auto mb-4 text-red-400" />
+            <h3 className={`text-2xl font-black uppercase mb-3 ${textColor}`}>Log Out?</h3>
+            <p className={`text-sm mb-8 ${theme === 'dark' ? 'text-white/50' : 'text-neutral-500'}`}>You'll need your access key to return to the CRM.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setLogoutConfirm(false)}
+                className={`flex-1 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border transition ${theme === 'dark' ? 'border-white/10 text-white/50 hover:border-white/30' : 'border-black/10 text-neutral-500 hover:border-black/30'}`}>
+                Cancel
+              </button>
+              <button onClick={onLogout}
+                className="flex-1 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest bg-red-500 text-white hover:bg-red-600 transition">
+                Yes, Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+const useSave = (refreshData) => {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+  const save = async (data) => {
+    setSaving(true); setSaveErr('');
+    try { await axios.post('/api/update', data); await refreshData(); setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    catch (e) { setSaveErr(e.response?.data?.error || 'Error saving.'); }
+    finally { setSaving(false); }
+  };
+  return { saving, saved, saveErr, save };
+};
+
+const Section = ({ title, theme, children }) => (
+  <section>
+    <h3 className={`text-sm font-black uppercase tracking-[0.3em] mb-5 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{title}</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">{children}</div>
+  </section>
+);
+
+const SaveBar = ({ saving, saved, saveErr, onSave, accentColor }) => (
+  <div className="space-y-2">
+    {saveErr && <p className="text-red-500 text-xs font-bold">{saveErr}</p>}
+    <button type={onSave ? 'button' : 'submit'} onClick={onSave} disabled={saving}
+      className="w-full py-5 rounded-2xl font-black uppercase tracking-widest transition shadow-lg disabled:opacity-50 text-white hover:brightness-110"
+      style={{ backgroundColor: saved ? '#22c55e' : accentColor }}>
+      <Save size={18} className="inline mr-2" />
+      {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Changes'}
+    </button>
+  </div>
+);
+
+// ── Cloudinary upload ─────────────────────────────────────────────────────────
+
+const cloudinaryUpload = async (file, category) => {
+  if (!CLOUD_NAME) throw new Error('VITE_CLOUDINARY_CLOUD_NAME not set');
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', UPLOAD_PRESET);
+  fd.append('folder', `kagisho/${category}`);
+  const resourceType = file.type.startsWith('video/') ? 'video' : 'auto';
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`, { method: 'POST', body: fd });
+  if (!res.ok) { const b = await res.json(); throw new Error(b.error?.message || 'Upload failed'); }
+  return res.json();
+};
+
+// ── AI DASHBOARD TAB ──────────────────────────────────────────────────────────
+
+const DashboardTab = ({ player, theme, accentColor }) => {
+  const [aiResponse, setAiResponse] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [activePrompt, setActivePrompt] = useState(null);
+  const [customQ, setCustomQ] = useState('');
+  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+  const mutedColor = theme === 'dark' ? 'text-white/50' : 'text-neutral-500';
+  const cardClass = theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-white border-black/5 shadow-sm';
+
+  const PROMPTS = [
+    {
+      id: 'performance',
+      label: 'Performance Analysis',
+      icon: <BarChart3 size={18} />,
+      prompt: `Analyse this footballer's stats and give specific performance insights and areas to improve:\nGoals: ${player.goals}, Assists: ${player.assists}, Pass Accuracy: ${player.pass_accuracy}, Shot Conversion: ${player.shot_conversion}, Dribble Success: ${player.dribble_success}, Recoveries/90: ${player.recoveries}, Chances Created: ${player.chances_created}, Sprint Speed: ${player.sprint_speed}, Work Rate: ${player.work_rate}.\nPosition: ${player.position}. Be specific, concise and actionable.`,
+    },
+    {
+      id: 'bio',
+      label: 'Improve Bio',
+      icon: <FileText size={18} />,
+      prompt: `Rewrite this footballer's bio to be more compelling for scouts and clubs. Keep it under 80 words. Current bio: "${player.bio}". Player details: ${player.position}, ${player.nationality}, Age ${player.age}, Club: ${player.club}. Make it punchy, professional and highlight strengths.`,
+    },
+    {
+      id: 'motivation',
+      label: 'Coaching Tips',
+      icon: <Zap size={18} />,
+      prompt: `Based on these stats, give ${player.name} 3 specific, motivational coaching tips for improvement:\nGoals: ${player.goals}, Assists: ${player.assists}, Pass Accuracy: ${player.pass_accuracy}, Shot Conversion: ${player.shot_conversion}, Dribble Success: ${player.dribble_success}.\nBe direct, encouraging and specific. Format as numbered tips.`,
+    },
+  ];
+
+  const askGemini = async (promptText) => {
+    setLoading(true); setError(''); setAiResponse('');
+    try {
+      const res = await axios.post('/api/chat', {
+        messages: [{ role: 'user', content: promptText }],
+      });
+      setAiResponse(res.data.reply || 'No response received.');
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Connection status */}
+      <div className={`flex items-center justify-between p-5 rounded-2xl border ${cardClass}`}>
+        <div className="flex items-center gap-3">
+          <Bot size={20} style={{ color: accentColor }} />
+          <div>
+            <p className={`text-sm font-black ${textColor}`}>Gemini AI — Flash 1.5</p>
+            <p className={`text-[10px] ${mutedColor}`}>Server-side · Secure · Fast</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-green-500">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          Connected
+        </div>
+      </div>
+
+      {/* Quick action buttons */}
+      <div>
+        <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-4 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Quick Analysis</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {PROMPTS.map(p => (
+            <button key={p.id} onClick={() => { setActivePrompt(p.id); askGemini(p.prompt); }}
+              disabled={loading}
+              className={`flex items-center gap-3 p-5 rounded-2xl border text-left transition hover:border-opacity-100 disabled:opacity-40 ${cardClass} ${activePrompt === p.id ? 'border-opacity-100' : ''}`}
+              style={activePrompt === p.id ? { borderColor: accentColor } : {}}>
+              <div style={{ color: accentColor }}>{p.icon}</div>
+              <span className={`text-sm font-black ${textColor}`}>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom question */}
+      <div>
+        <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-3 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Ask Anything</p>
+        <div className="flex gap-3">
+          <input type="text" value={customQ} onChange={e => setCustomQ(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && customQ.trim() && (setActivePrompt('custom'), askGemini(customQ))}
+            placeholder={`Ask AI about ${player.name}'s career, tactics, or anything…`}
+            className={`flex-1 p-4 rounded-2xl border outline-none text-sm ${theme === 'dark' ? 'bg-black/40 border-white/5 text-white placeholder:text-white/20' : 'bg-white border-black/10 text-neutral-900'}`} />
+          <button onClick={() => { if (customQ.trim()) { setActivePrompt('custom'); askGemini(customQ); } }}
+            disabled={loading || !customQ.trim()}
+            className="px-6 py-4 rounded-2xl text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-40 hover:brightness-110 transition"
+            style={{ backgroundColor: accentColor }}>
+            Ask
+          </button>
+        </div>
+      </div>
+
+      {/* AI response */}
+      {(loading || aiResponse || error) && (
+        <div className={`p-8 rounded-3xl border ${cardClass}`}>
+          <div className="flex items-center gap-2 mb-4">
+            <Bot size={16} style={{ color: accentColor }} />
+            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: accentColor }}>AI Response</span>
+            {loading && <div className="w-1.5 h-1.5 rounded-full animate-ping ml-2" style={{ backgroundColor: accentColor }} />}
+          </div>
+          {error && <p className="text-red-400 text-sm font-bold">{error}</p>}
+          {loading && !aiResponse && (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <div key={i} className={`h-3 rounded-full animate-pulse ${theme === 'dark' ? 'bg-white/10' : 'bg-neutral-200'}`} style={{ width: `${[90, 75, 60][i - 1]}%` }} />)}
+            </div>
+          )}
+          {aiResponse && (
+            <div className={`text-sm leading-relaxed whitespace-pre-wrap ${theme === 'dark' ? 'text-white/80' : 'text-neutral-700'}`}>
+              {aiResponse}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stat summary cards */}
+      <div>
+        <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-4 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Current Season At a Glance</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Goals', value: player.goals },
+            { label: 'Assists', value: player.assists },
+            { label: 'Pass Acc.', value: player.pass_accuracy },
+            { label: 'Sprint', value: player.sprint_speed },
+          ].map(({ label, value }) => (
+            <div key={label} className={`p-5 rounded-2xl border ${cardClass}`}>
+              <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${mutedColor}`}>{label}</p>
+              <p className="text-2xl font-black" style={{ color: accentColor }}>{value || '—'}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 };
 
-const ProfileTab = ({ player, theme, refreshData }) => {
-  const [formData, setFormData] = useState(player);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+// ── PROFILE TAB ───────────────────────────────────────────────────────────────
 
-  const updateField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
+const ProfileTab = ({ player, theme, accentColor, refreshData, settings, refreshSettings }) => {
+  const [form, setForm] = useState(player);
+  const { saving, saved, saveErr, save } = useSave(refreshData);
+  const set = (field, val) => setForm(p => ({ ...p, [field]: val }));
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setSaving(true);
+  // Hero image upload
+  const [heroUploading, setHeroUploading] = useState(false);
+  const [profileUploading, setProfileUploading] = useState(false);
+  const heroInputRef = useRef(null);
+  const profileInputRef = useRef(null);
+
+  const uploadImage = async (file, type) => {
+    const setter = type === 'hero' ? setHeroUploading : setProfileUploading;
+    setter(true);
     try {
-      await axios.post('/api/update', formData);
-      await refreshData();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error updating profile.');
-    } finally {
-      setSaving(false);
-    }
+      const result = await cloudinaryUpload(file, type === 'hero' ? 'hero' : 'profile');
+      await axios.post('/api/settings', {
+        [`${type}_image_url`]: result.secure_url,
+        [`${type}_image_public_id`]: result.public_id,
+      });
+      await refreshSettings();
+    } catch (e) { alert('Upload failed: ' + e.message); }
+    finally { setter(false); }
   };
 
+  const currentHero = settings?.hero_image_url || '';
+  const currentProfile = settings?.profile_image_url || '';
+
   return (
-    <form onSubmit={handleUpdate} className="space-y-10">
-      <Section title="Frontend Profile" theme={theme}>
-        <CRMInput theme={theme} label="Full Name" value={formData.name} onChange={v => updateField('name', v)} icon={<User size={14} />} />
-        <CRMInput theme={theme} label="Current Club" value={formData.club} onChange={v => updateField('club', v)} icon={<Shield size={14} />} />
-        <CRMInput theme={theme} label="Position" value={formData.position} onChange={v => updateField('position', v)} icon={<Activity size={14} />} />
-        <CRMInput theme={theme} label="Jersey Number" value={formData.jersey_number} onChange={v => updateField('jersey_number', v)} icon={<Hash size={14} />} />
-        <CRMInput theme={theme} label="Availability" value={String(formData.is_available ?? 1)} onChange={v => updateField('is_available', Number(v))} options={[{ value: '1', label: 'Available' }, { value: '0', label: 'Under Contract' }]} />
-        <CRMInput theme={theme} label="Nationality" value={formData.nationality} onChange={v => updateField('nationality', v)} icon={<Globe2 size={14} />} />
-      </Section>
+    <form onSubmit={e => { e.preventDefault(); save(form); }} className="space-y-10">
 
-      <Section title="Physical Details" theme={theme}>
-        <CRMInput theme={theme} label="Age" type="number" value={formData.age} onChange={v => updateField('age', v)} icon={<User size={14} />} />
-        <CRMInput theme={theme} label="Height" value={formData.height} onChange={v => updateField('height', v)} icon={<Ruler size={14} />} />
-        <CRMInput theme={theme} label="Weight" value={formData.weight} onChange={v => updateField('weight', v)} icon={<Weight size={14} />} />
-        <CRMInput theme={theme} label="Preferred Foot" value={formData.preferred_foot} onChange={v => updateField('preferred_foot', v)} icon={<Footprints size={14} />} />
-        <CRMInput theme={theme} label="Work Rate" value={formData.work_rate} onChange={v => updateField('work_rate', v)} icon={<Activity size={14} />} />
-      </Section>
-
-      <Section title="Performance Stats" theme={theme}>
-        <CRMInput theme={theme} label="Goals" type="number" value={formData.goals} onChange={v => updateField('goals', v)} icon={<BarChart3 size={14} />} />
-        <CRMInput theme={theme} label="Assists" type="number" value={formData.assists} onChange={v => updateField('assists', v)} icon={<BarChart3 size={14} />} />
-        <CRMInput theme={theme} label="Recoveries" value={formData.recoveries} onChange={v => updateField('recoveries', v)} icon={<BarChart3 size={14} />} />
-        <CRMInput theme={theme} label="Pass Accuracy" value={formData.pass_accuracy} onChange={v => updateField('pass_accuracy', v)} icon={<BarChart3 size={14} />} />
-      </Section>
-
-      <Section title="Contact and Social" theme={theme}>
-        <CRMInput theme={theme} label="Email" type="email" value={formData.email} onChange={v => updateField('email', v)} icon={<Mail size={14} />} />
-        <CRMInput theme={theme} label="Phone" value={formData.phone} onChange={v => updateField('phone', v)} icon={<Phone size={14} />} />
-        <CRMInput theme={theme} label="WhatsApp Number" value={formData.whatsapp} onChange={v => updateField('whatsapp', v)} icon={<Phone size={14} />} />
-        <CRMInput theme={theme} label="Instagram URL" value={formData.instagram} onChange={v => updateField('instagram', v)} icon={<Camera size={14} />} />
-        <CRMInput theme={theme} label="Facebook URL" value={formData.facebook} onChange={v => updateField('facebook', v)} icon={<span className="text-xs font-black">f</span>} />
-      </Section>
-
-      <Section title="Media and CV" theme={theme}>
-        <CRMInput theme={theme} label="Highlight 1 Title" value={formData.highlight_title_1} onChange={v => updateField('highlight_title_1', v)} icon={<FileText size={14} />} />
-        <CRMInput theme={theme} label="Highlight 1 URL" value={formData.highlight_url_1} onChange={v => updateField('highlight_url_1', v)} icon={<LinkIcon size={14} />} />
-        <CRMInput theme={theme} label="Highlight 1 Duration" value={formData.highlight_duration_1} onChange={v => updateField('highlight_duration_1', v)} icon={<AtSign size={14} />} />
-        <CRMInput theme={theme} label="Highlight 2 Title" value={formData.highlight_title_2} onChange={v => updateField('highlight_title_2', v)} icon={<FileText size={14} />} />
-        <CRMInput theme={theme} label="Highlight 2 URL" value={formData.highlight_url_2} onChange={v => updateField('highlight_url_2', v)} icon={<LinkIcon size={14} />} />
-        <CRMInput theme={theme} label="Highlight 2 Duration" value={formData.highlight_duration_2} onChange={v => updateField('highlight_duration_2', v)} icon={<AtSign size={14} />} />
-        <div className="md:col-span-2">
-          <CRMInput theme={theme} label="Public Bio" value={formData.bio} onChange={v => updateField('bio', v)} multiline />
+      {/* Hero & Profile image upload */}
+      <Section title="Site Images" theme={theme}>
+        {/* Hero image */}
+        <div className={`md:col-span-2 p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Homepage Hero Image</p>
+          {currentHero && <img src={currentHero} alt="Hero" className="w-full h-32 object-cover rounded-xl mb-3 object-top" />}
+          <input ref={heroInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadImage(e.target.files[0], 'hero')} />
+          <button type="button" onClick={() => heroInputRef.current?.click()} disabled={heroUploading}
+            className="w-full py-3 rounded-xl border border-dashed text-[10px] font-black uppercase tracking-widest transition hover:border-opacity-100 disabled:opacity-50"
+            style={{ borderColor: `${accentColor}60`, color: accentColor }}>
+            {heroUploading ? 'Uploading…' : currentHero ? 'Replace Hero Image' : 'Upload Hero Image'}
+          </button>
         </div>
-        <div className="md:col-span-2">
-          <CRMInput theme={theme} label="CV Summary" value={formData.cv_summary} onChange={v => updateField('cv_summary', v)} multiline />
-        </div>
-        <div className="md:col-span-2">
-          <CRMInput theme={theme} label="Achievements (one per line)" value={formData.achievements} onChange={v => updateField('achievements', v)} icon={<Award size={14} />} multiline />
+
+        {/* Profile picture */}
+        <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Profile Picture</p>
+          {currentProfile && <img src={currentProfile} alt="Profile" className="w-16 h-16 rounded-full object-cover object-top mb-3" style={{ borderColor: accentColor, border: `2px solid ${accentColor}` }} />}
+          <input ref={profileInputRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadImage(e.target.files[0], 'profile')} />
+          <button type="button" onClick={() => profileInputRef.current?.click()} disabled={profileUploading}
+            className="w-full py-3 rounded-xl border border-dashed text-[10px] font-black uppercase tracking-widest transition hover:border-opacity-100 disabled:opacity-50"
+            style={{ borderColor: `${accentColor}60`, color: accentColor }}>
+            {profileUploading ? 'Uploading…' : currentProfile ? 'Replace Photo' : 'Upload Photo'}
+          </button>
         </div>
       </Section>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest transition shadow-lg disabled:opacity-50 ${
-          saved
-            ? 'bg-green-500 text-white shadow-green-500/20'
-            : 'bg-soccer-red text-white shadow-soccer-red/20 hover:brightness-110'
-        }`}
-      >
-        <Save size={18} className="inline mr-2" />
-        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save CRM Updates'}
-      </button>
+      <Section title="Identity" theme={theme}>
+        <CRMInput theme={theme} label="Full Name" value={form.name} onChange={v => set('name', v)} icon={<User size={14} />} />
+        <CRMInput theme={theme} label="Current Club" value={form.club} onChange={v => set('club', v)} icon={<Shield size={14} />} />
+        <CRMInput theme={theme} label="Position" value={form.position} onChange={v => set('position', v)} icon={<Activity size={14} />} />
+        <CRMInput theme={theme} label="Jersey Number" value={form.jersey_number} onChange={v => set('jersey_number', v)} icon={<Hash size={14} />} />
+        <CRMInput theme={theme} label="Nationality" value={form.nationality} onChange={v => set('nationality', v)} icon={<Globe2 size={14} />} />
+        <CRMInput theme={theme} label="Availability" value={String(form.is_available ?? 1)} onChange={v => set('is_available', Number(v))}
+          options={[{ value: '1', label: 'Available for Transfer' }, { value: '0', label: 'Under Contract' }]} />
+      </Section>
+
+      <Section title="Physical" theme={theme}>
+        <CRMInput theme={theme} label="Age" type="number" value={form.age} onChange={v => set('age', v)} icon={<User size={14} />} />
+        <CRMInput theme={theme} label="Height" value={form.height} onChange={v => set('height', v)} icon={<Ruler size={14} />} />
+        <CRMInput theme={theme} label="Weight" value={form.weight} onChange={v => set('weight', v)} icon={<Weight size={14} />} />
+        <CRMInput theme={theme} label="Preferred Foot" value={form.preferred_foot} onChange={v => set('preferred_foot', v)} icon={<Footprints size={14} />} />
+        <CRMInput theme={theme} label="Work Rate" value={form.work_rate} onChange={v => set('work_rate', v)} icon={<Activity size={14} />} />
+      </Section>
+
+      <Section title="Contact & Social" theme={theme}>
+        <CRMInput theme={theme} label="Email" type="email" value={form.email} onChange={v => set('email', v)} icon={<Mail size={14} />} />
+        <CRMInput theme={theme} label="Phone" value={form.phone} onChange={v => set('phone', v)} icon={<Phone size={14} />} />
+        <CRMInput theme={theme} label="WhatsApp" value={form.whatsapp} onChange={v => set('whatsapp', v)} icon={<Phone size={14} />} />
+        <CRMInput theme={theme} label="Instagram URL" value={form.instagram} onChange={v => set('instagram', v)} icon={<Camera size={14} />} />
+        <CRMInput theme={theme} label="Facebook URL" value={form.facebook} onChange={v => set('facebook', v)} icon={<span className="text-xs font-black">f</span>} />
+      </Section>
+
+      <Section title="Bio & CV" theme={theme}>
+        <div className="md:col-span-2 lg:col-span-3"><CRMInput theme={theme} label="Public Bio" value={form.bio} onChange={v => set('bio', v)} multiline /></div>
+        <div className="md:col-span-2 lg:col-span-3"><CRMInput theme={theme} label="CV Summary" value={form.cv_summary} onChange={v => set('cv_summary', v)} multiline /></div>
+      </Section>
+
+      <Section title="Highlight Reels" theme={theme}>
+        <CRMInput theme={theme} label="Highlight 1 Title" value={form.highlight_title_1} onChange={v => set('highlight_title_1', v)} icon={<FileText size={14} />} />
+        <CRMInput theme={theme} label="Highlight 1 URL" value={form.highlight_url_1} onChange={v => set('highlight_url_1', v)} icon={<LinkIcon size={14} />} />
+        <CRMInput theme={theme} label="Highlight 1 Duration" value={form.highlight_duration_1} onChange={v => set('highlight_duration_1', v)} icon={<AtSign size={14} />} />
+        <CRMInput theme={theme} label="Highlight 2 Title" value={form.highlight_title_2} onChange={v => set('highlight_title_2', v)} icon={<FileText size={14} />} />
+        <CRMInput theme={theme} label="Highlight 2 URL" value={form.highlight_url_2} onChange={v => set('highlight_url_2', v)} icon={<LinkIcon size={14} />} />
+        <CRMInput theme={theme} label="Highlight 2 Duration" value={form.highlight_duration_2} onChange={v => set('highlight_duration_2', v)} icon={<AtSign size={14} />} />
+      </Section>
+
+      <SaveBar saving={saving} saved={saved} saveErr={saveErr} accentColor={accentColor} />
     </form>
   );
 };
 
-const LeadsTab = ({ theme }) => {
+// ── STATS TAB ─────────────────────────────────────────────────────────────────
+
+const StatsTab = ({ player, theme, accentColor, refreshData }) => {
+  const [form, setForm] = useState(player);
+  const { saving, saved, saveErr, save } = useSave(refreshData);
+  const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+  return (
+    <form onSubmit={e => { e.preventDefault(); save(form); }} className="space-y-10">
+      <div className={`p-4 rounded-2xl border text-[11px] font-bold ${theme === 'dark' ? 'bg-white/5 border-white/5 text-white/50' : 'bg-neutral-100 border-black/5 text-neutral-500'}`}>
+        💡 Every save auto-snapshots stats to the Trends tab for historical tracking.
+      </div>
+      <Section title="Season Performance" theme={theme}>
+        <CRMInput theme={theme} label="Goals" type="number" value={form.goals} onChange={v => set('goals', v)} icon={<BarChart3 size={14} />} />
+        <CRMInput theme={theme} label="Assists" type="number" value={form.assists} onChange={v => set('assists', v)} icon={<BarChart3 size={14} />} />
+        <CRMInput theme={theme} label="Recoveries / 90" value={form.recoveries} onChange={v => set('recoveries', v)} icon={<BarChart3 size={14} />} />
+        <CRMInput theme={theme} label="Pass Accuracy" value={form.pass_accuracy} onChange={v => set('pass_accuracy', v)} icon={<TrendingUp size={14} />} />
+      </Section>
+      <Section title="Attacking" theme={theme}>
+        <CRMInput theme={theme} label="Shot Conversion" value={form.shot_conversion} onChange={v => set('shot_conversion', v)} icon={<Zap size={14} />} />
+        <CRMInput theme={theme} label="Dribble Success" value={form.dribble_success} onChange={v => set('dribble_success', v)} icon={<Activity size={14} />} />
+        <CRMInput theme={theme} label="Chances Created" value={form.chances_created} onChange={v => set('chances_created', v)} icon={<BarChart3 size={14} />} />
+      </Section>
+      <Section title="Physical" theme={theme}>
+        <CRMInput theme={theme} label="Sprint Speed" value={form.sprint_speed} onChange={v => set('sprint_speed', v)} icon={<Zap size={14} />} />
+        <CRMInput theme={theme} label="Avg Distance / 90" value={form.avg_distance} onChange={v => set('avg_distance', v)} icon={<Activity size={14} />} />
+        <CRMInput theme={theme} label="Sprints per Match" value={form.sprints_per_match} onChange={v => set('sprints_per_match', v)} icon={<BarChart3 size={14} />} />
+      </Section>
+      <SaveBar saving={saving} saved={saved} saveErr={saveErr} accentColor={accentColor} />
+    </form>
+  );
+};
+
+// ── ACHIEVEMENTS TAB ──────────────────────────────────────────────────────────
+
+const AchievementsTab = ({ player, theme, accentColor, refreshData }) => {
+  const [list, setList] = useState((player.achievements || '').split('\n').filter(Boolean));
+  const [newItem, setNewItem] = useState('');
+  const { saving, saved, saveErr, save } = useSave(refreshData);
+  const inputClass = theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-neutral-50 border-black/10 text-neutral-900';
+
+  const add = () => { const t = newItem.trim(); if (!t) return; setList(p => [...p, t]); setNewItem(''); };
+  const remove = i => setList(p => p.filter((_, j) => j !== i));
+
+  return (
+    <div className="space-y-6">
+      <ul className="space-y-3">
+        {list.map((item, i) => (
+          <li key={i} className={`flex items-center justify-between gap-4 p-4 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+            <div className="flex items-center gap-3">
+              <Award size={16} style={{ color: accentColor }} />
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>{item}</span>
+            </div>
+            <button type="button" onClick={() => remove(i)} className="text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-500 transition">Remove</button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-3">
+        <input type="text" placeholder="Add achievement…" value={newItem} onChange={e => setNewItem(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
+          className={`flex-1 p-4 rounded-xl border outline-none text-sm ${inputClass}`} />
+        <button type="button" onClick={add} className="px-6 py-4 text-white font-black uppercase text-[10px] tracking-widest rounded-xl hover:brightness-110 transition" style={{ backgroundColor: accentColor }}>Add</button>
+      </div>
+      <SaveBar saving={saving} saved={saved} saveErr={saveErr} onSave={() => save({ achievements: list.join('\n') })} accentColor={accentColor} />
+    </div>
+  );
+};
+
+// ── CLUBS TAB ─────────────────────────────────────────────────────────────────
+
+const ClubsTab = ({ theme, accentColor }) => {
+  const [clubs, setClubs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ club_name: '', role: '', season: '', apps: '', goals: '' });
+  const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const inputClass = theme === 'dark' ? 'bg-black/40 border-white/5 text-white' : 'bg-white border-black/10 text-neutral-900';
+  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+
+  const fetch_ = useCallback(async () => {
+    const r = await axios.get('/api/crm/previous-clubs'); setClubs(r.data || []); setLoading(false);
+  }, []);
+  useEffect(() => { fetch_(); }, [fetch_]);
+
+  const handleSave = async () => {
+    if (!form.club_name.trim()) return;
+    setSaving(true);
+    try {
+      if (editId) { await axios.patch(`/api/crm/previous-clubs/${editId}`, form); setEditId(null); }
+      else { await axios.post('/api/crm/previous-clubs', form); }
+      setForm({ club_name: '', role: '', season: '', apps: '', goals: '' });
+      await fetch_();
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this club entry?')) return;
+    await axios.delete(`/api/crm/previous-clubs/${id}`); await fetch_();
+  };
+
+  const startEdit = (club) => { setEditId(club.id); setForm({ club_name: club.club_name, role: club.role, season: club.season, apps: club.apps, goals: club.goals }); };
+
+  return (
+    <div className="space-y-8">
+      <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Previous Clubs</p>
+
+      {/* List */}
+      {clubs.map(club => (
+        <div key={club.id} className={`flex items-center justify-between p-5 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+          <div>
+            <p className={`font-black text-sm uppercase ${textColor}`}>{club.club_name}</p>
+            <div className="flex gap-4 mt-1">
+              {club.role && <span className={`text-[10px] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{club.role}</span>}
+              {club.season && <span className={`text-[10px] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{club.season}</span>}
+              {club.apps && <span className={`text-[10px] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{club.apps} Apps</span>}
+              {club.goals && <span className="text-[10px]" style={{ color: accentColor }}>{club.goals} Goals</span>}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => startEdit(club)} className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border transition ${theme === 'dark' ? 'border-white/10 text-white/40 hover:border-white/30' : 'border-black/10 text-neutral-400 hover:border-black/20'}`}>Edit</button>
+            <button onClick={() => handleDelete(club.id)} className="text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition">Delete</button>
+          </div>
+        </div>
+      ))}
+      {!loading && clubs.length === 0 && (
+        <p className={`text-sm text-center py-8 ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>No previous clubs yet. Add one below.</p>
+      )}
+
+      {/* Add / Edit form */}
+      <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+        <p className={`text-[10px] font-black uppercase tracking-widest mb-4 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{editId ? 'Edit Club' : 'Add Club'}</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+          {[['club_name', 'Club Name'], ['role', 'Role/Position'], ['season', 'Season (e.g. 2023/24)'], ['apps', 'Appearances'], ['goals', 'Goals']].map(([key, label]) => (
+            <input key={key} type="text" placeholder={label} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+              className={`p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          ))}
+        </div>
+        <div className="flex gap-3">
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="flex-1 py-4 rounded-xl text-white font-black uppercase text-[10px] tracking-widest disabled:opacity-50 hover:brightness-110 transition"
+            style={{ backgroundColor: accentColor }}>
+            {saving ? 'Saving…' : editId ? 'Update Club' : 'Add Club'}
+          </button>
+          {editId && <button type="button" onClick={() => { setEditId(null); setForm({ club_name: '', role: '', season: '', apps: '', goals: '' }); }}
+            className={`px-6 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest border transition ${theme === 'dark' ? 'border-white/10 text-white/40' : 'border-black/10 text-neutral-400'}`}>Cancel</button>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── FIXTURES TAB ──────────────────────────────────────────────────────────────
+
+const FixturesTab = ({ theme, accentColor, playerClub }) => {
+  const makeBlank = useCallback(() => ({
+    match_date: '', match_time: '', home_team: playerClub || '',
+    away_team: '', venue: '', competition: '',
+    home_score: '', away_score: '', is_completed: false, notes: '',
+  }), [playerClub]);
+
+  const [fixtures, setFixtures] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(makeBlank);
+  const [saveErr, setSaveErr] = useState('');
+
+  const inputClass = theme === 'dark'
+    ? 'bg-black/40 border-white/5 text-white placeholder:text-white/30'
+    : 'bg-white border-black/10 text-neutral-900 placeholder:text-neutral-400';
+  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+
+  const fetch_ = useCallback(async () => {
+    try {
+      const r = await axios.get('/api/crm/fixtures');
+      setFixtures(r.data || []);
+    } catch (e) { console.error('fetch fixtures:', e); }
+  }, []);
+
+  useEffect(() => { fetch_(); }, [fetch_]);
+
+  const setField = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleEdit = (f) => {
+    // match_date from DB is 'YYYY-MM-DD' — use as-is for date input
+    setEditId(f.id);
+    setForm({
+      match_date: f.match_date || '',
+      match_time: f.match_time || '',
+      home_team: f.home_team || '',
+      away_team: f.away_team || '',
+      venue: f.venue || '',
+      competition: f.competition || '',
+      home_score: f.home_score !== null && f.home_score !== undefined ? String(f.home_score) : '',
+      away_score: f.away_score !== null && f.away_score !== undefined ? String(f.away_score) : '',
+      is_completed: Boolean(f.is_completed),
+      notes: f.notes || '',
+    });
+    setSaveErr('');
+    // Scroll form into view
+    setTimeout(() => document.getElementById('fixture-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  const handleCancel = () => { setEditId(null); setForm(makeBlank()); setSaveErr(''); };
+
+  const handleSave = async () => {
+    if (!form.match_date) { setSaveErr('Match date is required.'); return; }
+    if (!form.home_team) { setSaveErr('Home team is required.'); return; }
+    if (!form.away_team) { setSaveErr('Away team is required.'); return; }
+    setSaving(true); setSaveErr('');
+    try {
+      const payload = {
+        ...form,
+        home_score: form.home_score === '' ? null : Number(form.home_score),
+        away_score: form.away_score === '' ? null : Number(form.away_score),
+        is_completed: form.is_completed ? 1 : 0,
+      };
+      if (editId) {
+        await axios.patch(`/api/crm/fixtures/${editId}`, payload);
+        setEditId(null);
+      } else {
+        await axios.post('/api/crm/fixtures', payload);
+      }
+      setForm(makeBlank());
+      await fetch_();
+    } catch (e) {
+      setSaveErr(e.response?.data?.error || 'Save failed. Check your connection.');
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this fixture? This cannot be undone.')) return;
+    try {
+      await axios.delete(`/api/crm/fixtures/${id}`);
+      await fetch_();
+      if (editId === id) handleCancel();
+    } catch (e) {
+      alert('Delete failed: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
+        Match Schedule — {fixtures.length} fixture{fixtures.length !== 1 ? 's' : ''}
+      </p>
+
+      {/* ── Fixture list ────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        {fixtures.length === 0 && (
+          <p className={`text-sm text-center py-8 ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>
+            No fixtures yet. Add one below.
+          </p>
+        )}
+        {fixtures.map(f => {
+          const isEditing = editId === f.id;
+          // Parse date safely (treat as local date to avoid timezone shift)
+          const parts = (f.match_date || '').split('-');
+          const dateStr = parts.length === 3
+            ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+              .toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+            : f.match_date;
+
+          return (
+            <div key={f.id}
+              className={`p-5 rounded-2xl border transition ${isEditing
+                  ? ''
+                  : theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'
+                }`}
+              style={isEditing ? { borderColor: accentColor, backgroundColor: `${accentColor}08` } : {}}>
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: accentColor }}>
+                      {f.competition || 'Match'}
+                    </span>
+                    <span className={`text-[9px] ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>
+                      {dateStr}{f.match_time ? ` · ${f.match_time}` : ''}
+                    </span>
+                    {f.is_completed
+                      ? <span className="text-[9px] font-black uppercase text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">Completed</span>
+                      : <span className="text-[9px] font-black uppercase text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">Upcoming</span>
+                    }
+                    {isEditing && <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: accentColor }}>Editing</span>}
+                  </div>
+                  <p className={`font-black text-sm ${textColor}`}>
+                    {f.home_team}
+                    {' '}
+                    {(f.home_score !== null && f.home_score !== undefined && f.away_score !== null && f.away_score !== undefined)
+                      ? <span className={`${theme === 'dark' ? 'text-white/60' : 'text-neutral-500'}`}>{f.home_score} – {f.away_score}</span>
+                      : <span className={`text-[11px] ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>vs</span>
+                    }
+                    {' '}
+                    {f.away_team}
+                  </p>
+                  {f.venue && (
+                    <p className={`text-[10px] mt-0.5 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>📍 {f.venue}</p>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  {isEditing ? (
+                    <button onClick={handleCancel}
+                      className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border transition ${theme === 'dark' ? 'border-white/10 text-white/40' : 'border-black/10 text-neutral-400'}`}>
+                      Cancel
+                    </button>
+                  ) : (
+                    <button onClick={() => handleEdit(f)}
+                      className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border transition ${theme === 'dark' ? 'border-white/10 text-white/40 hover:border-white/30 hover:text-white/70' : 'border-black/10 text-neutral-400 hover:border-black/30'}`}>
+                      Edit
+                    </button>
+                  )}
+                  <button onClick={() => handleDelete(f.id)}
+                    className="text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Add / Edit form ──────────────────────────────────────────── */}
+      <div id="fixture-form" className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}
+        style={editId ? { borderColor: `${accentColor}60` } : {}}>
+        <p className={`text-[10px] font-black uppercase tracking-widest mb-5 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
+          {editId ? '✏️ Edit Fixture' : '+ Add New Fixture'}
+        </p>
+
+        {/* Row 1: date, time, competition */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Match Date *</label>
+            <input type="date" value={form.match_date} onChange={e => setField('match_date', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Kick-off Time</label>
+            <input type="time" value={form.match_time} onChange={e => setField('match_time', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Competition</label>
+            <input type="text" placeholder="e.g. PSL, Nedbank Cup" value={form.competition} onChange={e => setField('competition', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+        </div>
+
+        {/* Row 2: teams + venue */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Home Team *</label>
+            <input type="text" placeholder="Home Team" value={form.home_team} onChange={e => setField('home_team', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Away Team *</label>
+            <input type="text" placeholder="Away Team" value={form.away_team} onChange={e => setField('away_team', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Venue</label>
+            <input type="text" placeholder="Stadium / Ground" value={form.venue} onChange={e => setField('venue', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+        </div>
+
+        {/* Row 3: scores + completed */}
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Home Score</label>
+            <input type="number" min="0" placeholder="—" value={form.home_score} onChange={e => setField('home_score', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Away Score</label>
+            <input type="number" min="0" placeholder="—" value={form.away_score} onChange={e => setField('away_score', e.target.value)}
+              className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+          </div>
+          <div>
+            <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Status</label>
+            <label className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer h-[42px] ${theme === 'dark' ? 'border-white/5 text-white/60' : 'border-black/5 text-neutral-500'}`}>
+              <input type="checkbox" checked={form.is_completed} onChange={e => setField('is_completed', e.target.checked)} className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Completed</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="mb-4">
+          <label className={`text-[9px] font-black uppercase tracking-widest block mb-1 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Notes</label>
+          <input type="text" placeholder="Optional notes or lineup info" value={form.notes} onChange={e => setField('notes', e.target.value)}
+            className={`w-full p-3 rounded-xl border outline-none text-sm ${inputClass}`} />
+        </div>
+
+        {/* Error */}
+        {saveErr && (
+          <p className="text-red-400 text-xs font-bold mb-3">⚠️ {saveErr}</p>
+        )}
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="flex-1 py-4 rounded-xl text-white font-black uppercase text-[10px] tracking-widest disabled:opacity-50 hover:brightness-110 transition"
+            style={{ backgroundColor: accentColor }}>
+            {saving ? 'Saving…' : editId ? '✓ Update Fixture' : '+ Add Fixture'}
+          </button>
+          {editId && (
+            <button type="button" onClick={handleCancel}
+              className={`px-6 py-4 rounded-xl font-black uppercase text-[10px] border transition ${theme === 'dark' ? 'border-white/10 text-white/40 hover:border-white/20' : 'border-black/10 text-neutral-400 hover:border-black/20'}`}>
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── MEDIA TAB ─────────────────────────────────────────────────────────────────
+
+const MediaTab = ({ theme, accentColor }) => {
+  const [items, setItems] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+  const [uploadOk, setUploadOk] = useState('');
+  const [activeCat, setActiveCat] = useState('photo');
+  const [dragOver, setDragOver] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const fileInputRef = useRef(null);
+  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+
+  const fetchMedia = useCallback(async () => {
+    const r = await axios.get('/api/media'); setItems(r.data || []);
+  }, []);
+  useEffect(() => { fetchMedia(); }, [fetchMedia]);
+
+  const handleFiles = async (files) => {
+    if (!files?.length) return;
+    setUploading(true); setUploadErr(''); setUploadOk(''); let ok = 0;
+    for (const file of Array.from(files)) {
+      try {
+        const result = await cloudinaryUpload(file, activeCat);
+        const isVid = file.type.startsWith('video/');
+        await axios.post('/api/media', {
+          category: activeCat, title: file.name.replace(/\.[^.]+$/, ''),
+          url: result.secure_url, public_id: result.public_id,
+          thumbnail: isVid ? result.secure_url.replace('/upload/', '/upload/so_0,w_400/') + '.jpg' : result.secure_url,
+          duration: result.duration ? `${Math.round(result.duration)}s` : '',
+          file_type: file.type,
+        });
+        ok++;
+      } catch (e) { setUploadErr(`Failed: ${file.name} — ${e.message}`); }
+    }
+    if (ok > 0) setUploadOk(`${ok} file${ok > 1 ? 's' : ''} uploaded`);
+    await fetchMedia(); setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this file? This cannot be undone.')) return;
+    await axios.delete(`/api/media/${id}`); setItems(p => p.filter(i => i.id !== id));
+  };
+
+  const handleEditSave = async (id) => {
+    await axios.patch(`/api/media/${id}`, { title: editTitle, category: activeCat });
+    setItems(p => p.map(i => i.id === id ? { ...i, title: editTitle } : i)); setEditId(null);
+  };
+
+  const filtered = items.filter(i => i.category === activeCat);
+  const cat = MEDIA_CATEGORIES.find(c => c.id === activeCat);
+
+  return (
+    <div className="space-y-8">
+      {/* Category tabs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {MEDIA_CATEGORIES.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => setActiveCat(id)}
+            className={`flex flex-col items-center gap-2 p-5 rounded-2xl border transition ${activeCat === id ? 'border-opacity-100' : ''} ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-neutral-50 border-black/10'}`}
+            style={activeCat === id ? { borderColor: accentColor, backgroundColor: `${accentColor}15`, color: accentColor } : {}}>
+            <Icon size={20} />
+            <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+            <span className="text-[10px] opacity-40">{items.filter(i => i.category === id).length} files</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Drop zone */}
+      <div onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+        onClick={() => fileInputRef.current?.click()}
+        className={`border-2 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all ${dragOver ? '' : 'hover:opacity-80'}`}
+        style={{ borderColor: dragOver ? accentColor : `${accentColor}40`, backgroundColor: dragOver ? `${accentColor}10` : '' }}>
+        <input ref={fileInputRef} type="file" multiple accept={cat?.accept} className="hidden" onChange={e => handleFiles(e.target.files)} />
+        {uploading ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-3 h-3 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
+            <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white/50' : 'text-neutral-500'}`}>Uploading to Cloudinary…</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <Upload size={32} className={theme === 'dark' ? 'text-white/20' : 'text-neutral-300'} />
+            <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white/50' : 'text-neutral-500'}`}>
+              Drop files here or <span style={{ color: accentColor }}>browse</span>
+            </p>
+            <p className="text-[10px]" style={{ color: accentColor }}>Uploading as: {cat?.label.toUpperCase()} ({cat?.accept})</p>
+          </div>
+        )}
+      </div>
+
+      {uploadErr && <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold">{uploadErr}</div>}
+      {uploadOk && <div className="flex items-center gap-3 p-4 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-bold">✓ {uploadOk}</div>}
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(item => (
+          <div key={item.id} className={`rounded-2xl border overflow-hidden ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+            <div className="relative aspect-video bg-neutral-900 overflow-hidden flex items-center justify-center">
+              {item.category === 'video'
+                ? <video src={item.url} className="w-full h-full object-cover" preload="metadata" />
+                : item.category === 'certificate'
+                  ? <div className="flex flex-col items-center gap-2" style={{ color: accentColor }}><Award size={32} /><span className="text-[10px] font-bold uppercase">PDF</span></div>
+                  : <img src={item.thumbnail || item.url} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+              }
+            </div>
+            <div className="p-4">
+              {editId === item.id ? (
+                <div className="flex gap-2">
+                  <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} autoFocus
+                    className={`flex-1 text-sm p-2 rounded-lg border outline-none ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white border-black/10 text-neutral-900'}`} />
+                  <button type="button" onClick={() => handleEditSave(item.id)} style={{ color: accentColor }} className="text-[10px] font-black uppercase">Save</button>
+                  <button type="button" onClick={() => setEditId(null)} className="text-white/30"><X size={12} /></button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <button type="button" onClick={() => { setEditId(item.id); setEditTitle(item.title); }}
+                    className={`text-sm font-bold truncate text-left hover:opacity-70 transition ${textColor}`}>
+                    {item.title || 'Untitled'}
+                  </button>
+                  <button type="button" onClick={() => handleDelete(item.id)} className="text-red-400 hover:text-red-500 shrink-0 ml-2 transition"><Trash2 size={14} /></button>
+                </div>
+              )}
+              <a href={item.url} target="_blank" rel="noreferrer" className="text-[10px] mt-1 block" style={{ color: accentColor }}>Open ↗</a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── TRENDS TAB ────────────────────────────────────────────────────────────────
+
+const TrendsTab = ({ theme, accentColor }) => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const mutedColor = theme === 'dark' ? 'text-white/30' : 'text-neutral-400';
+
+  useEffect(() => { axios.get('/api/history?limit=20').then(r => setHistory(r.data || [])).catch(() => { }).finally(() => setLoading(false)); }, []);
+
+  if (loading) return <div className="flex justify-center py-24"><div className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: accentColor }} /></div>;
+  if (history.length < 2) return (
+    <div className={`text-center py-24 ${mutedColor}`}>
+      <TrendingUp size={48} className="mx-auto mb-4 opacity-20" />
+      <p className="font-bold uppercase tracking-widest text-xs mb-2">Not enough data yet</p>
+      <p className="text-[11px]">Save Stats at least twice — each save creates a snapshot here.</p>
+    </div>
+  );
+
+  const parseNum = v => parseFloat(String(v || '0').replace(/[^0-9.]/g, '')) || 0;
+  const latest = history[history.length - 1];
+  const metrics = [
+    { key: 'goals', label: 'Goals', color: accentColor },
+    { key: 'assists', label: 'Assists', color: '#3b82f6' },
+    { key: 'pass_accuracy', label: 'Pass Acc %', color: '#10b981' },
+    { key: 'shot_conversion', label: 'Shot Conv %', color: '#f59e0b' },
+    { key: 'dribble_success', label: 'Dribble %', color: '#8b5cf6' },
+  ];
+
+  return (
+    <div className="space-y-10">
+      {/* Delta cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {metrics.map(({ key, label, color }) => {
+          const prev = history[history.length - 2];
+          const cur = parseNum(latest[key]);
+          const prv = parseNum(prev?.[key]);
+          const d = cur - prv;
+          return (
+            <div key={key} className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+              <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${mutedColor}`}>{label}</p>
+              <p className="text-2xl font-black" style={{ color }}>{cur}</p>
+              {d !== 0 && <p className={`text-[10px] font-bold mt-1 ${d > 0 ? 'text-green-500' : 'text-red-400'}`}>{d > 0 ? '▲' : '▼'} {Math.abs(d).toFixed(1)}</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Sparklines */}
+      {metrics.map(({ key, label, color }) => {
+        const values = history.map(h => parseNum(h[key]));
+        const max = Math.max(...values, 1);
+        const labels = history.map(h => h.label || new Date(h.snapped_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }));
+        const W = 600, H = 80, pad = 12;
+        const pts = values.map((v, i) => `${pad + (i / (values.length - 1 || 1)) * (W - pad * 2)},${H - pad - (v / max) * (H - pad * 2)}`).join(' ');
+        return (
+          <div key={key} className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <p className={`text-[10px] font-black uppercase tracking-widest ${mutedColor}`}>{label}</p>
+              <span className="text-xs font-black" style={{ color }}>{parseNum(latest[key])}</span>
+            </div>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+              <polyline points={pts + ` ${W - pad},${H - pad} ${pad},${H - pad}`} fill={color + '20'} stroke="none" />
+              <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              {values.map((v, i) => { const x = pad + (i / (values.length - 1 || 1)) * (W - pad * 2), y = H - pad - (v / max) * (H - pad * 2); return <circle key={i} cx={x} cy={y} r="4" fill={color} stroke="white" strokeWidth="1.5" />; })}
+            </svg>
+            <div className="flex justify-between mt-1 px-1">
+              {labels.map((l, i) => (
+                <span key={i} className={`text-[9px] ${mutedColor}`} style={{ width: `${100 / labels.length}%`, textAlign: i === 0 ? 'left' : i === labels.length - 1 ? 'right' : 'center' }}>{l}</span>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── COMMUNITY TAB ─────────────────────────────────────────────────────────────
+
+const CommunityTab = ({ theme, accentColor, player, onBadgeUpdate }) => {
+  const [follows, setFollows] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [view, setView] = useState('comments');
+  const [deleting, setDeleting] = useState(null);
+  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+  const mutedColor = theme === 'dark' ? 'text-white/30' : 'text-neutral-400';
+  const rowClass = theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5';
+
+  const fetch_ = useCallback(async () => {
+    const [f, c] = await Promise.all([
+      axios.get('/api/crm/community/follows').then(r => r.data || []).catch(() => []),
+      axios.get('/api/crm/community/comments').then(r => r.data || []).catch(() => []),
+    ]);
+    setFollows(f);
+    setComments(c);
+    // Badge clears — no more pending items
+    onBadgeUpdate(0);
+  }, [onBadgeUpdate]);
+
+  useEffect(() => { fetch_(); }, [fetch_]);
+
+  const deleteComment = async (id) => {
+    if (!window.confirm('Delete this comment? It will be removed from the public wall.')) return;
+    setDeleting(id);
+    try {
+      await axios.delete(`/api/crm/community/comments/${id}`);
+      setComments(prev => prev.filter(c => c.id !== id));
+    } catch { alert('Delete failed.'); }
+    finally { setDeleting(null); }
+  };
+
+  const deleteFollow = async (id) => {
+    if (!window.confirm('Remove this follower?')) return;
+    setDeleting(id);
+    try {
+      await axios.delete(`/api/crm/community/follows/${id}`);
+      setFollows(prev => prev.filter(f => f.id !== id));
+    } catch { alert('Delete failed.'); }
+    finally { setDeleting(null); }
+  };
+
+  const approvedFollows = follows.filter(f => f.status === 'approved');
+  const approvedComments = comments.filter(c => c.status === 'approved');
+
+  return (
+    <div className="space-y-6">
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: 'Total Followers', value: approvedFollows.length, color: accentColor },
+          { label: 'Total Comments', value: approvedComments.length, color: accentColor },
+        ].map(({ label, value, color }) => (
+          <div key={label} className={`p-5 rounded-2xl border ${rowClass}`}>
+            <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${mutedColor}`}>{label}</p>
+            <p className="text-3xl font-black" style={{ color }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* View switcher */}
+      <div className={`flex gap-1 p-1 rounded-2xl w-fit ${theme === 'dark' ? 'bg-white/5' : 'bg-neutral-100'}`}>
+        {[
+          { id: 'comments', label: `Comments (${approvedComments.length})` },
+          { id: 'follows', label: `Followers (${approvedFollows.length})` },
+        ].map(({ id, label }) => (
+          <button key={id} onClick={() => setView(id)}
+            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${view === id ? 'text-white' : theme === 'dark' ? 'text-white/40 hover:text-white/60' : 'text-neutral-500 hover:text-neutral-700'}`}
+            style={view === id ? { backgroundColor: accentColor } : {}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Comments list — Kagisho can delete bad ones ── */}
+      {view === 'comments' && (
+        <div className="space-y-3">
+          {approvedComments.length === 0 && (
+            <p className={`text-center py-10 text-sm ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>
+              No comments yet. They appear here as soon as someone posts.
+            </p>
+          )}
+          {approvedComments.map(c => (
+            <div key={c.id} className={`p-5 rounded-2xl border ${rowClass}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-black shrink-0"
+                    style={{ backgroundColor: accentColor }}>
+                    {c.name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap mb-1">
+                      <p className={`font-black text-sm ${textColor}`}>{c.name}</p>
+                      <span className={`text-[9px] ${mutedColor}`}>
+                        {new Date(c.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-white/60' : 'text-neutral-600'}`}>
+                      {c.comment}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => deleteComment(c.id)}
+                  disabled={deleting === c.id}
+                  title="Delete comment"
+                  className="shrink-0 p-2 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition disabled:opacity-40"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Followers list — Kagisho can remove ── */}
+      {view === 'follows' && (
+        <div className="space-y-3">
+          {approvedFollows.length === 0 && (
+            <p className={`text-center py-10 text-sm ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>
+              No followers yet. They appear here instantly when someone follows.
+            </p>
+          )}
+          {approvedFollows.map(f => (
+            <div key={f.id} className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${rowClass}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-black shrink-0"
+                  style={{ backgroundColor: accentColor }}>
+                  {f.name?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div>
+                  <p className={`font-black text-sm ${textColor}`}>{f.name}</p>
+                  <p className={`text-[10px] ${mutedColor}`}>
+                    {new Date(f.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => deleteFollow(f.id)}
+                disabled={deleting === f.id}
+                title="Remove follower"
+                className="p-2 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition disabled:opacity-40"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── LEADS TAB ─────────────────────────────────────────────────────────────────
+
+const LeadsTab = ({ theme, accentColor }) => {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
-  const rowClass = theme === 'dark' ? 'border-white/5 hover:bg-white/5' : 'border-black/5 hover:bg-black/5';
 
-  useEffect(() => {
-    axios.get('/api/leads')
-      .then(r => setLeads(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => { axios.get('/api/leads').then(r => setLeads(r.data || [])).catch(() => { }).finally(() => setLoading(false)); }, []);
 
   const markRead = async (id) => {
-    try {
-      await axios.patch(`/api/leads/${id}/read`);
-      setLeads(prev => prev.map(l => l.id === id ? { ...l, read: true } : l));
-    } catch { /* empty */ }
+    await axios.patch(`/api/leads/${id}/read`);
+    setLeads(p => p.map(l => l.id === id ? { ...l, read: true } : l));
   };
 
   const unread = leads.filter(l => !l.read).length;
-
-  if (loading) {
-    return (
-      <div className={`text-center py-16 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>
-        Loading leads...
-      </div>
-    );
-  }
-
-  if (leads.length === 0) {
-    return (
-      <div className={`text-center py-16 ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>
-        <Users size={40} className="mx-auto mb-4 opacity-20" />
-        <p className="font-bold uppercase tracking-widest text-xs">No contact leads yet</p>
-      </div>
-    );
-  }
+  if (loading) return <div className={`text-center py-16 text-sm ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>Loading…</div>;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h3 className={`text-sm font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
-            Scout Inquiries
-          </h3>
-          {unread > 0 && (
-            <span className="bg-soccer-red text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-              {unread} new
-            </span>
-          )}
+          <h3 className={`text-sm font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Scout Inquiries</h3>
+          {unread > 0 && <span className="text-white text-[10px] font-black px-2 py-0.5 rounded-full" style={{ backgroundColor: accentColor }}>{unread} new</span>}
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>
-          {leads.length} total
-        </span>
+        <span className={`text-[10px] ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>{leads.length} total</span>
       </div>
-
+      {leads.length === 0 && <p className={`text-center py-16 ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>No leads yet.</p>}
       <div className="space-y-2">
         {leads.map(lead => (
-          <div
-            key={lead.id}
-            className={`rounded-2xl border transition cursor-pointer ${rowClass} ${
-              !lead.read ? 'border-soccer-red/20' : theme === 'dark' ? 'border-white/5' : 'border-black/5'
-            }`}
-          >
-            <div
-              className="flex items-center justify-between p-5"
-              onClick={() => {
-                setExpanded(expanded === lead.id ? null : lead.id);
-                if (!lead.read) markRead(lead.id);
-              }}
-            >
+          <div key={lead.id} className={`rounded-2xl border cursor-pointer transition ${theme === 'dark' ? 'border-white/5 hover:bg-white/5' : 'border-black/5 hover:bg-black/5'} ${!lead.read ? 'border-opacity-100' : ''}`}
+            style={!lead.read ? { borderColor: `${accentColor}40` } : {}}>
+            <div className="flex items-center justify-between p-5" onClick={() => { setExpanded(expanded === lead.id ? null : lead.id); if (!lead.read) markRead(lead.id); }}>
               <div className="flex items-center gap-4 min-w-0">
-                {!lead.read && (
-                  <div className="w-2 h-2 rounded-full bg-soccer-red shrink-0" />
-                )}
+                {!lead.read && <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />}
                 <div className="min-w-0">
                   <p className={`font-bold text-sm truncate ${textColor}`}>{lead.name}</p>
                   <p className={`text-[11px] truncate ${theme === 'dark' ? 'text-white/30' : 'text-neutral-400'}`}>{lead.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <span className={`text-[10px] ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>
-                  {new Date(lead.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </span>
-                <div className={`w-4 h-4 flex items-center justify-center transition-transform ${expanded === lead.id ? 'rotate-180' : ''}`}>
-                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] ${theme === 'dark' ? 'text-white/20' : 'text-neutral-400'}`}>{new Date(lead.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+                {expanded === lead.id ? <ChevronUp size={14} className="opacity-30" /> : <ChevronDown size={14} className="opacity-30" />}
               </div>
             </div>
             {expanded === lead.id && (
-              <div className={`px-5 pb-5 text-sm leading-relaxed border-t ${theme === 'dark' ? 'text-white/60 border-white/5' : 'text-neutral-600 border-black/5'}`}>
-                <p className="pt-4">{lead.message}</p>
-                <a
-                  href={`mailto:${lead.email}`}
-                  className="inline-flex items-center gap-1.5 mt-4 text-soccer-red text-[10px] font-black uppercase tracking-widest hover:underline"
-                >
+              <div className={`px-5 pb-5 text-sm border-t ${theme === 'dark' ? 'text-white/60 border-white/5' : 'text-neutral-600 border-black/5'}`}>
+                <p className="pt-4 whitespace-pre-wrap">{lead.message}</p>
+                <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 mt-4 text-[10px] font-black uppercase tracking-widest hover:underline" style={{ color: accentColor }}>
                   <Mail size={12} /> Reply via Email
                 </a>
               </div>
@@ -273,118 +1265,84 @@ const LeadsTab = ({ theme }) => {
   );
 };
 
-const LOG_COLORS = {
-  info: 'text-emerald-400',
-  warn: 'text-amber-400',
-  error: 'text-red-400'
-};
+// ── SETTINGS TAB ──────────────────────────────────────────────────────────────
 
-const TerminalTab = ({ theme }) => {
-  const [logs, setLogs] = useState([]);
-  const [connected, setConnected] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const bottomRef = useRef(null);
-  const containerRef = useRef(null);
+const SettingsTab = ({ theme, accentColor, settings, refreshSettings }) => {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
 
-  useEffect(() => {
-    axios.get('/api/logs')
-      .then(r => setLogs(r.data))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const es = new EventSource('/api/logs/stream');
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-    es.onmessage = (e) => {
-      try {
-        const entry = JSON.parse(e.data);
-        setLogs(prev => [...prev.slice(-499), entry]);
-      } catch { /* empty */ }
-    };
-    return () => es.close();
-  }, []);
-
-  useEffect(() => {
-    if (bottomRef.current && containerRef.current) {
-      const el = containerRef.current;
-      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-      if (isNearBottom) {
-        bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  }, [logs]);
-
-  const filtered = filter === 'all' ? logs : logs.filter(l => l.level === filter);
-
-  const fmt = (ts) => {
-    const d = new Date(ts);
-    return d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const setColor = async (color) => {
+    setSaving(true);
+    try {
+      await axios.post('/api/settings', { accent_color: color });
+      await refreshSettings();
+      setSaved(true); setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
   };
 
+  const currentColor = settings?.accent_color || 'red';
+
+  const COLORS = [
+    { id: 'red', label: 'Soccer Red', hex: '#e10600', desc: 'Classic & bold — default' },
+    { id: 'blue', label: 'Sky Blue', hex: '#0ea5e9', desc: 'Fresh & modern — alternate' },
+  ];
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <h3 className={`text-sm font-black uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
-            Server Logs
-          </h3>
-          <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${connected ? 'text-emerald-400' : 'text-neutral-500'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'}`} />
-            {connected ? 'Live' : 'Connecting...'}
-          </div>
-        </div>
-        <div className="flex gap-1">
-          {['all', 'info', 'warn', 'error'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition ${
-                filter === f
-                  ? f === 'all' ? 'bg-white/10 text-white' : `${LOG_COLORS[f]} bg-current/10`
-                  : theme === 'dark' ? 'text-white/20 hover:text-white/50' : 'text-neutral-400 hover:text-neutral-700'
-              }`}
-            >
-              {f}
+    <div className="space-y-10">
+      <div>
+        <p className={`text-[10px] font-black uppercase tracking-[0.35em] mb-3 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Website Accent Colour</p>
+        <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
+          This changes the primary accent colour across the entire website — buttons, highlights, stats, and all accent elements. Changes apply instantly for all visitors.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {COLORS.map(({ id, label, hex, desc }) => (
+            <button key={id} type="button" onClick={() => setColor(id)} disabled={saving}
+              className={`relative p-6 rounded-3xl border-2 text-left transition hover:scale-[1.02] disabled:opacity-50 ${currentColor === id ? '' : 'border-transparent'}`}
+              style={currentColor === id ? { borderColor: hex, backgroundColor: `${hex}15` } : { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f5f5f5' }}>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-10 h-10 rounded-full shadow-lg" style={{ backgroundColor: hex }} />
+                <div>
+                  <p className={`font-black text-sm ${textColor}`}>{label}</p>
+                  <p className={`text-[10px] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{desc}</p>
+                </div>
+              </div>
+              {currentColor === id && (
+                <span className="absolute top-4 right-4 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full text-white" style={{ backgroundColor: hex }}>Active</span>
+              )}
             </button>
           ))}
         </div>
+        {saved && <p className="mt-4 text-green-500 text-sm font-bold">✓ Colour updated — all visitors will see the new theme.</p>}
       </div>
 
-      <div
-        ref={containerRef}
-        className={`rounded-2xl font-mono text-[11px] p-5 h-96 overflow-y-auto space-y-1 ${
-          theme === 'dark' ? 'bg-black border border-white/5' : 'bg-neutral-900 border border-black/5'
-        }`}
-      >
-        {filtered.length === 0 ? (
-          <div className="text-white/20 text-center pt-16 uppercase tracking-widest text-[10px]">
-            No logs yet
-          </div>
-        ) : (
-          filtered.map((entry, i) => (
-            <div key={i} className="flex gap-3 leading-relaxed">
-              <span className="text-white/20 shrink-0">{fmt(entry.created_at)}</span>
-              <span className={`uppercase font-black shrink-0 w-10 ${LOG_COLORS[entry.level] || 'text-white/50'}`}>
-                {entry.level}
-              </span>
-              <span className="text-white/80 break-all">{entry.message}</span>
-            </div>
-          ))
-        )}
-        <div ref={bottomRef} />
+      {/* Gemini key instructions */}
+      <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+        <div className="flex items-center gap-3 mb-3">
+          <Bot size={18} style={{ color: accentColor }} />
+          <p className={`font-black text-sm uppercase tracking-widest ${textColor}`}>AI Dashboard & Chatbot Setup</p>
+        </div>
+        <p className={`text-[11px] leading-relaxed mb-4 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
+          Both the AI Dashboard and the public chatbot use Gemini (Google AI — free tier available). The key lives on the server, so it's never exposed to visitors.
+        </p>
+        <ol className={`text-[11px] space-y-2 ${theme === 'dark' ? 'text-white/50' : 'text-neutral-600'}`}>
+          <li>1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline" style={{ color: accentColor }}>aistudio.google.com</a> and create a free API key</li>
+          <li>2. Add to your server environment variables: <code className={`px-1 rounded text-[10px] ${theme === 'dark' ? 'bg-black/40' : 'bg-neutral-200'}`}>GEMINI_API_KEY=your_key</code></li>
+          <li>3. Restart the server (or redeploy on Render)</li>
+          <li>4. The chatbot bubble appears bottom-right on all public pages automatically</li>
+        </ol>
+      </div>
+
+      {/* Render keep-alive instructions */}
+      <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+        <p className={`font-black text-sm uppercase tracking-widest mb-3 ${textColor}`}>Render Keep-Alive</p>
+        <p className={`text-[11px] leading-relaxed ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
+          The server auto-pings itself every 13 minutes to prevent Render's free tier from sleeping.
+          Add <code className={`px-1 rounded text-[10px] ${theme === 'dark' ? 'bg-black/40' : 'bg-neutral-200'}`}>RENDER_EXTERNAL_URL=https://your-app.onrender.com</code> to server environment variables on Render.
+        </p>
       </div>
     </div>
   );
 };
-
-const Section = ({ title, theme, children }) => (
-  <section>
-    <h3 className={`text-sm font-black uppercase tracking-[0.3em] mb-5 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
-      {title}
-    </h3>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">{children}</div>
-  </section>
-);
 
 export default CRM;

@@ -1,25 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-    --color-soccer-red: #E10600;
-    --color-dark-bg: #0F0F0F;
-    --color-card-dark: #1A1A1A;
-    --color-card-light: #FFFFFF;
+  --color-soccer-red: #E10600;
+  --color-soccer-blue: #0ea5e9;
+  --color-accent: var(--site-accent, #E10600);
+  --color-dark-bg: #0F0F0F;
+  --color-card-dark: #1A1A1A;
+  --color-soccer-grey: #1A1A1A;
 }
 
 :root {
-    --bg-primary: #0F0F0F;
-    --text-primary: #FFFFFF;
+  --bg-primary: #0F0F0F;
+  --text-primary: #FFFFFF;
+  --site-accent: #E10600;
 }
 
 [data-theme='light'] {
-    --bg-primary: #F5F5F7;
-    --text-primary: #121212;
+  --bg-primary: #F5F5F7;
+  --text-primary: #121212;
 }
 
+[data-accent='blue'] {
+  --site-accent: #0ea5e9;
+}
+
+/* Dynamic accent — all accent-coloured elements respond to theme */
+.accent-text  { color: var(--site-accent) !important; }
+.accent-bg    { background-color: var(--site-accent) !important; }
+.accent-border{ border-color: var(--site-accent) !important; }
+
 body {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    transition: all 0.4s ease-in-out;
-    font-family: 'Inter', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.4s ease-in-out, color 0.4s ease-in-out;
+  font-family: 'Inter', sans-serif;
 }
