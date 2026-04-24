@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Heart, MessageCircle, CheckCircle, Send, Sparkles } from 'lucide-react';
+import { Users, Heart, MessageCircle, CheckCircle, Send, Sparkles, Sparkle } from 'lucide-react';
 import axios from 'axios';
 
 // ── Avatar colour from name hash ──────────────────────────────────────────────
@@ -15,10 +15,18 @@ const getAvatarColor = (name = '') => {
 };
 
 // ── Emoji reactions (local only — no backend) ─────────────────────────────────
-const REACTIONS = ['⚽', '🔥', '💪', '🏆'];
+const REACTIONS = ['⚽', '🔥', '💪', '🏆', '👏', '❤️', '🎯', '⚡', '🙌', '🤩'];
+
+// Convert emoji char to Twemoji SVG CDN URL
+const emojiUrl = (emoji) => {
+    const points = [...emoji]
+        .map(c => c.codePointAt(0).toString(16))
+        .filter(cp => cp !== 'fe0f');
+    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${points.join('-')}.svg`;
+};
 
 const CommentCard = ({ comment, index, accentColor, theme }) => {
-    const [reactions, setReactions] = useState({ '⚽': 0, '🔥': 0, '💪': 0, '🏆': 0 });
+        const [reactions, setReactions] = useState(Object.fromEntries(REACTIONS.map(e => [e, 0])));
     const [reacted, setReacted] = useState(null);
     const avatarColor = getAvatarColor(comment.name);
     const isDark = theme === 'dark';
@@ -79,11 +87,38 @@ const CommentCard = ({ comment, index, accentColor, theme }) => {
                                         : 'border-black/8 text-neutral-400 hover:border-black/20'
                                 }`}
                             style={active ? { backgroundColor: accentColor } : {}}>
-                            {emoji}{count > 0 && <span className="ml-0.5">{count}</span>}
+                            <img src={emojiUrl(emoji)} alt={emoji} className="w-4 h-4" draggable={false} />{count > 0 && <span className="ml-0.5">{count}</span>}
                         </motion.button>
                     );
                 })}
             </div>
+            {/* AI reply from Kagisho */}
+            {comment.ai_reply && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, type: 'spring', stiffness: 260, damping: 22 }}
+                    className={`mt-2 pt-4 border-t ${isDark ? 'border-white/5' : 'border-black/5'}`}
+                >
+                    <div className="flex items-start gap-2.5">
+                        <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 text-[10px] font-black mt-0.5 shadow-md"
+                            style={{ backgroundColor: accentColor }}
+                        >
+                            K
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: accentColor }}>Kagisho replied</p>
+                                <Sparkle size={9} style={{ color: accentColor }} />
+                            </div>
+                            <p className={`text-[12px] leading-relaxed italic ${isDark ? 'text-white/65' : 'text-neutral-600'}`}>
+                                &ldquo;{comment.ai_reply}&rdquo;
+                            </p>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
         </motion.div>
     );
 };
@@ -133,6 +168,7 @@ const Community = ({ player, theme, accentColor }) => {
     const [followName, setFollowName] = useState('');
     const [followDone, setFollowDone] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const [followMessage, setFollowMessage] = useState('');
 
     // Comment
     const [commentName, setCommentName] = useState('');
@@ -169,8 +205,9 @@ const Community = ({ player, theme, accentColor }) => {
         if (!followName.trim()) return;
         setFollowLoading(true);
         try {
-            await axios.post('/api/community/follow', { name: followName.trim() });
+            const followRes = await axios.post('/api/community/follow', { name: followName.trim() });
             setFollowDone(true);
+            setFollowMessage(followRes.data.ai_welcome || '');
             setFollowName('');
             // Refresh to update count
             setTimeout(fetchData, 500);
@@ -183,7 +220,7 @@ const Community = ({ player, theme, accentColor }) => {
         if (!commentName.trim() || !commentText.trim()) return;
         setCommentLoading(true);
         try {
-            await axios.post('/api/community/comment', {
+            const commentPostRes = await axios.post('/api/community/comment', {
                 name: commentName.trim(),
                 comment: commentText.trim(),
             });
@@ -194,6 +231,7 @@ const Community = ({ player, theme, accentColor }) => {
                 comment: commentText.trim(),
                 created_at: new Date().toISOString(),
                 status: 'approved',
+                ai_reply: commentPostRes.data.ai_reply || null,
             };
             setComments(prev => [newComment, ...prev]);
             setCommentText('');
@@ -322,7 +360,9 @@ const Community = ({ player, theme, accentColor }) => {
                                     <CheckCircle size={36} style={{ color: ac }} />
                                 </motion.div>
                                 <h3 className={`text-2xl font-black uppercase mb-3 ${textColor}`}>You're in! 🎉</h3>
-                                <p className={`mb-6 ${mutedColor}`}>Welcome to the squad. You're now following {player.name}.</p>
+                                <p className={`mb-6 ${mutedColor}`}>
+                                    {followMessage || `Welcome to the squad. You're now following ${player.name}.`}
+                                </p>
                                 <button onClick={() => { setFollowDone(false); setActiveTab('wall'); }}
                                     className="text-sm font-bold underline" style={{ color: ac }}>
                                     Back to the wall
@@ -423,3 +463,4 @@ const Community = ({ player, theme, accentColor }) => {
 };
 
 export default Community;
+

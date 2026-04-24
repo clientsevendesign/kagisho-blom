@@ -13,6 +13,7 @@ import Fixtures from './pages/fixtures';
 import Community from './pages/community';
 import CRM from './pages/crm';
 import Chatbot from './components/chatbot';
+import NotFound from './pages/notfound';
 
 if (import.meta.env.VITE_API_URL) {
   axios.defaults.baseURL = import.meta.env.VITE_API_URL;
@@ -116,6 +117,7 @@ const App = () => {
                 ? <CRM {...sharedProps} refreshData={fetchPlayerData} refreshSettings={fetchSettings} onLogout={handleLogout} />
                 : <AdminLogin onLogin={handleLogin} theme={theme} accentColor={accentColor} />
             } />
+            <Route path="*" element={<NotFound theme={theme} accentColor={accentColor} />} />
           </Routes>
         </main>
         <Chatbot theme={theme} accentColor={accentColor} player={player} />

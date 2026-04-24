@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { FileText, Calendar, MapPin, Send, Mail, MessageSquare, User, Users, ChevronRight } from 'lucide-react';
+import { Phone, Calendar, MapPin, Send, Mail, MessageSquare, User, Users, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import StatBox from '../components/statbox';
 
@@ -91,15 +91,15 @@ const Home = ({ player, theme, accentColor, settings }) => {
           <StatBox theme={theme} label="Goals" value={player.goals} color="accent" accentColor={accentColor} />
           <StatBox theme={theme} label="Assists" value={player.assists} accentColor={accentColor} />
 
-          {/* CV card */}
-          <a href="/api/cv" target="_blank" rel="noreferrer"
+          {/* Contact CTA card — replaces CV link (CV available on request via CRM) */}
+          <Link to="/contact"
             className={`p-10 rounded-[40px] flex flex-col justify-between hover:scale-[1.02] transition cursor-pointer shadow-xl min-h-[210px] ${theme === 'dark' ? 'bg-white text-black' : 'bg-neutral-900 text-white'}`}>
-            <FileText size={40} />
+            <Phone size={40} />
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 mb-2">Scout Ready</p>
-              <h3 className="text-3xl font-black uppercase leading-none">Resume</h3>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 mb-2">Scouts & Clubs</p>
+              <h3 className="text-3xl font-black uppercase leading-none">Get in Touch</h3>
             </div>
-          </a>
+          </Link>
 
           <StatBox theme={theme} label="Pass Acc." value={player.pass_accuracy} accentColor={accentColor} />
         </div>

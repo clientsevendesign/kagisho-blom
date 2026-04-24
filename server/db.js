@@ -1,4 +1,4 @@
-import { createClient } from '@libsql/client';
+﻿import { createClient } from '@libsql/client';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -97,6 +97,13 @@ export const bootstrapSchema = async () => {
 
   for (const sql of tables) {
     await db.execute({ sql, args: [] });
+  }
+
+  for (const col of [
+    `ALTER TABLE community_comments ADD COLUMN ai_reply TEXT DEFAULT ''`,
+    `ALTER TABLE fixtures ADD COLUMN commentary TEXT DEFAULT ''`,
+  ]) {
+    try { await db.execute({ sql: col, args: [] }); } catch { /* column already exists */ }
   }
 
   // Seed default site settings
@@ -382,6 +389,14 @@ export const getContactLeads = async () => {
 
 export const markLeadRead = async (id) => {
   await db.execute({ sql: `UPDATE contact_leads SET read = 1 WHERE id = ?`, args: [id] });
+};
+
+export const updateCommentAiReply = async (id, aiReply) => {
+  await db.execute({ sql: `UPDATE community_comments SET ai_reply = ? WHERE id = ?`, args: [aiReply, id] });
+};
+
+export const updateFixtureCommentary = async (id, commentary) => {
+  await db.execute({ sql: `UPDATE fixtures SET commentary = ? WHERE id = ?`, args: [commentary, id] });
 };
 
 // ── Server logs ───────────────────────────────────────────────────────────────

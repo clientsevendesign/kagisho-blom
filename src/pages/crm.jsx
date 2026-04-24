@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import {
   Activity, AtSign, Award, BarChart3, Bot, Camera, Calendar,
@@ -75,7 +75,7 @@ const CRM = ({ player, theme, accentColor, settings, refreshData, refreshSetting
         </div>
 
         {/* Tab bar */}
-        <div className="flex flex-wrap gap-1 mb-8 p-1 rounded-2xl w-fit bg-black/10 max-w-full overflow-x-auto">
+        <div className="flex flex-wrap gap-1 mb-8 p-1.5 rounded-2xl w-full bg-black/10">
           {TABS.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
               className={`relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === id ? 'text-white shadow-lg' : theme === 'dark' ? 'text-white/40 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
@@ -92,7 +92,7 @@ const CRM = ({ player, theme, accentColor, settings, refreshData, refreshSetting
         </div>
 
         {/* Content */}
-        {activeTab === 'Dashboard' && <DashboardTab player={player} theme={theme} accentColor={accentColor} />}
+        {activeTab === 'Dashboard' && <DashboardTab player={player} theme={theme} accentColor={accentColor} settings={settings} />}
         {activeTab === 'Profile' && <ProfileTab player={player} theme={theme} accentColor={accentColor} refreshData={refreshData} settings={settings} refreshSettings={refreshSettings} />}
         {activeTab === 'Stats' && <StatsTab player={player} theme={theme} accentColor={accentColor} refreshData={refreshData} />}
         {activeTab === 'Achievements' && <AchievementsTab player={player} theme={theme} accentColor={accentColor} refreshData={refreshData} />}
@@ -179,7 +179,7 @@ const cloudinaryUpload = async (file, category) => {
 
 // ── AI DASHBOARD TAB ──────────────────────────────────────────────────────────
 
-const DashboardTab = ({ player, theme, accentColor }) => {
+const DashboardTab = ({ player, theme, accentColor, settings }) => {
   const [aiResponse, setAiResponse] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -230,14 +230,35 @@ const DashboardTab = ({ player, theme, accentColor }) => {
         <div className="flex items-center gap-3">
           <Bot size={20} style={{ color: accentColor }} />
           <div>
-            <p className={`text-sm font-black ${textColor}`}>Gemini AI — Flash 1.5</p>
-            <p className={`text-[10px] ${mutedColor}`}>Server-side · Secure · Fast</p>
+            <p className={`text-sm font-black ${textColor}`}>{settings?.ai_api_key?.startsWith('gsk_') ? 'Groq AI — Llama 3.3 70B' : 'Gemini AI — Flash 2.0'}</p>
+            <p className={`text-[10px] ${mutedColor}`}>Server-side · Secure · Free</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-green-500">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          Connected
-        </div>
+        {(() => {
+          const keySet = !!(settings?.ai_api_key || settings?.gemini_api_key);
+          return keySet ? (
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-green-500">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              Connected
+            </div>
+          ) : (
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-400">
+                <div className="w-2 h-2 rounded-full bg-red-400" />
+                Key Not Set
+              </div>
+              <button
+                onClick={() => {
+                  const event = new CustomEvent('crm-switch-tab', { detail: 'Settings' });
+                  window.dispatchEvent(event);
+                }}
+                className="text-[9px] font-black uppercase tracking-widest underline"
+                style={{ color: accentColor }}>
+                Add Key in Settings
+              </button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Quick action buttons */}
@@ -685,8 +706,8 @@ const FixturesTab = ({ theme, accentColor, playerClub }) => {
           return (
             <div key={f.id}
               className={`p-5 rounded-2xl border transition ${isEditing
-                  ? ''
-                  : theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'
+                ? ''
+                : theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'
                 }`}
               style={isEditing ? { borderColor: accentColor, backgroundColor: `${accentColor}08` } : {}}>
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1270,19 +1291,38 @@ const LeadsTab = ({ theme, accentColor }) => {
 const SettingsTab = ({ theme, accentColor, settings, refreshSettings }) => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [geminiKey, setGeminiKey] = useState('');
+  const [geminiSaving, setGeminiSaving] = useState(false);
+  const [geminiSaved, setGeminiSaved] = useState(false);
+  const [geminiErr, setGeminiErr] = useState('');
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
+  const mutedColor = theme === 'dark' ? 'text-white/40' : 'text-neutral-500';
+  const cardClass = theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5';
+  const inputClass = theme === 'dark' ? 'bg-black/40 border-white/5 text-white placeholder:text-white/20' : 'bg-white border-black/10 text-neutral-900';
 
   const setColor = async (color) => {
     setSaving(true);
     try {
       await axios.post('/api/settings', { accent_color: color });
       await refreshSettings();
-      setSaved(true); setTimeout(() => setSaved(false), 2000);
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
     } finally { setSaving(false); }
   };
 
-  const currentColor = settings?.accent_color || 'red';
+  const saveGeminiKey = async () => {
+    if (!geminiKey.trim()) return;
+    setGeminiSaving(true); setGeminiErr('');
+    try {
+      await axios.post('/api/settings/gemini', { key: geminiKey.trim() });
+      setGeminiSaved(true);
+      setGeminiKey('');
+      setTimeout(() => setGeminiSaved(false), 3000);
+    } catch (e) {
+      setGeminiErr(e.response?.data?.error || 'Failed to save key.');
+    } finally { setGeminiSaving(false); }
+  };
 
+  const currentColor = settings?.accent_color || 'red';
   const COLORS = [
     { id: 'red', label: 'Soccer Red', hex: '#e10600', desc: 'Classic & bold — default' },
     { id: 'blue', label: 'Sky Blue', hex: '#0ea5e9', desc: 'Fresh & modern — alternate' },
@@ -1290,21 +1330,23 @@ const SettingsTab = ({ theme, accentColor, settings, refreshSettings }) => {
 
   return (
     <div className="space-y-10">
+
+      {/* Colour switcher */}
       <div>
-        <p className={`text-[10px] font-black uppercase tracking-[0.35em] mb-3 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>Website Accent Colour</p>
-        <p className={`text-sm mb-6 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
-          This changes the primary accent colour across the entire website — buttons, highlights, stats, and all accent elements. Changes apply instantly for all visitors.
+        <p className={`text-[10px] font-black uppercase tracking-[0.35em] mb-3 ${mutedColor}`}>Website Accent Colour</p>
+        <p className={`text-sm mb-6 ${mutedColor}`}>
+          Changes the primary accent across the entire site — buttons, highlights, stats. Applies instantly for all visitors.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {COLORS.map(({ id, label, hex, desc }) => (
             <button key={id} type="button" onClick={() => setColor(id)} disabled={saving}
               className={`relative p-6 rounded-3xl border-2 text-left transition hover:scale-[1.02] disabled:opacity-50 ${currentColor === id ? '' : 'border-transparent'}`}
               style={currentColor === id ? { borderColor: hex, backgroundColor: `${hex}15` } : { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f5f5f5' }}>
-              <div className="flex items-center gap-4 mb-3">
+              <div className="flex items-center gap-4 mb-2">
                 <div className="w-10 h-10 rounded-full shadow-lg" style={{ backgroundColor: hex }} />
                 <div>
                   <p className={`font-black text-sm ${textColor}`}>{label}</p>
-                  <p className={`text-[10px] ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>{desc}</p>
+                  <p className={`text-[10px] ${mutedColor}`}>{desc}</p>
                 </div>
               </div>
               {currentColor === id && (
@@ -1313,32 +1355,56 @@ const SettingsTab = ({ theme, accentColor, settings, refreshSettings }) => {
             </button>
           ))}
         </div>
-        {saved && <p className="mt-4 text-green-500 text-sm font-bold">✓ Colour updated — all visitors will see the new theme.</p>}
+        {saved && <p className="mt-4 text-green-500 text-sm font-bold">✓ Colour updated — live for all visitors.</p>}
       </div>
 
-      {/* Gemini key instructions */}
-      <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
-        <div className="flex items-center gap-3 mb-3">
+      {/* Gemini API key — updatable without redeploying */}
+      <div className={`p-6 rounded-2xl border ${cardClass}`}>
+        <div className="flex items-center gap-3 mb-4">
           <Bot size={18} style={{ color: accentColor }} />
-          <p className={`font-black text-sm uppercase tracking-widest ${textColor}`}>AI Dashboard & Chatbot Setup</p>
+          <div>
+            <p className={`font-black text-sm uppercase tracking-widest ${textColor}`}>AI Chatbot & Dashboard — API Key</p>
+            <p className={`text-[10px] mt-0.5 ${mutedColor}`}>Groq (recommended, free) or Google Gemini — takes effect immediately</p>
+          </div>
         </div>
-        <p className={`text-[11px] leading-relaxed mb-4 ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
-          Both the AI Dashboard and the public chatbot use Gemini (Google AI — free tier available). The key lives on the server, so it's never exposed to visitors.
-        </p>
-        <ol className={`text-[11px] space-y-2 ${theme === 'dark' ? 'text-white/50' : 'text-neutral-600'}`}>
-          <li>1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline" style={{ color: accentColor }}>aistudio.google.com</a> and create a free API key</li>
-          <li>2. Add to your server environment variables: <code className={`px-1 rounded text-[10px] ${theme === 'dark' ? 'bg-black/40' : 'bg-neutral-200'}`}>GEMINI_API_KEY=your_key</code></li>
-          <li>3. Restart the server (or redeploy on Render)</li>
-          <li>4. The chatbot bubble appears bottom-right on all public pages automatically</li>
-        </ol>
+
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <input
+              type="password"
+              placeholder="Paste Groq key (gsk_…) or Gemini key (AIza…)"
+              value={geminiKey}
+              onChange={e => setGeminiKey(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveGeminiKey()}
+              className={`flex-1 p-3 rounded-xl border outline-none text-sm ${inputClass}`}
+            />
+            <button
+              type="button"
+              onClick={saveGeminiKey}
+              disabled={geminiSaving || !geminiKey.trim()}
+              className="px-5 py-3 rounded-xl text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 hover:brightness-110 transition"
+              style={{ backgroundColor: geminiSaved ? '#22c55e' : accentColor }}>
+              {geminiSaving ? '…' : geminiSaved ? '✓ Saved' : 'Save Key'}
+            </button>
+          </div>
+          <p className={`text-[10px] leading-relaxed ${mutedColor}`}>
+            <strong>Groq (free &amp; fast):</strong>{' '}
+            <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="underline" style={{ color: accentColor }}>console.groq.com</a>
+            {' · '}<strong>Gemini (also free):</strong>{' '}
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline" style={{ color: accentColor }}>aistudio.google.com</a><br/>
+            Current key: {settings?.ai_api_key ? (settings.ai_api_key.startsWith('gsk_') ? '●●●●●●●● (Groq · via CRM)' : '●●●●●●●● (Gemini · via CRM)') : settings?.gemini_api_key ? '●●●●●●●● (Gemini · legacy)' : '✗ not set — paste key above'}
+          </p>
+
+
+        </div>
       </div>
 
-      {/* Render keep-alive instructions */}
-      <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+      {/* Render keep-alive info */}
+      <div className={`p-6 rounded-2xl border ${cardClass}`}>
         <p className={`font-black text-sm uppercase tracking-widest mb-3 ${textColor}`}>Render Keep-Alive</p>
-        <p className={`text-[11px] leading-relaxed ${theme === 'dark' ? 'text-white/40' : 'text-neutral-500'}`}>
-          The server auto-pings itself every 13 minutes to prevent Render's free tier from sleeping.
-          Add <code className={`px-1 rounded text-[10px] ${theme === 'dark' ? 'bg-black/40' : 'bg-neutral-200'}`}>RENDER_EXTERNAL_URL=https://your-app.onrender.com</code> to server environment variables on Render.
+        <p className={`text-[11px] leading-relaxed ${mutedColor}`}>
+          The server self-pings every 13 minutes to prevent Render's free tier from sleeping.
+          Add <code className={`px-1 rounded text-[10px] ${theme === 'dark' ? 'bg-black/40' : 'bg-neutral-200'}`}>RENDER_EXTERNAL_URL=https://your-app.onrender.com</code> to your Render environment variables to enable this.
         </p>
       </div>
     </div>

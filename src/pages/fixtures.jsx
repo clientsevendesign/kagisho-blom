@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Trophy } from 'lucide-react';
+import { Calendar, MapPin, Trophy, Sparkle } from 'lucide-react';
 import axios from 'axios';
 
 const Fixtures = ({ player, theme, accentColor }) => {
@@ -115,6 +115,18 @@ const FixtureRow = ({ fixture, theme, accentColor, playerClub, upcoming }) => {
             </div>
             {fixture.notes && (
                 <p className={`mt-3 text-[11px] pt-3 border-t ${theme === 'dark' ? 'text-white/30 border-white/5' : 'text-neutral-400 border-black/5'}`}>{fixture.notes}</p>
+            )}
+            {fixture.commentary && (
+                <div className={`mt-3 pt-3 border-t flex items-start gap-2.5 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 text-[9px] font-black mt-0.5" style={{ backgroundColor: accentColor }}>K</div>
+                    <div className="flex-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: accentColor }}>{upcoming ? 'Pre-match' : 'Post-match'}</p>
+                            <Sparkle size={9} style={{ color: accentColor }} />
+                        </div>
+                        <p className={`text-[12px] leading-relaxed italic ${theme === 'dark' ? 'text-white/60' : 'text-neutral-500'}`}>&ldquo;{fixture.commentary}&rdquo;</p>
+                    </div>
+                </div>
             )}
         </div>
     );
