@@ -5,7 +5,7 @@ import {
   CheckCircle, ChevronDown, ChevronUp, FileText, Film, Footprints,
   Globe2, Hash, Image, LinkIcon, LogOut, Mail, MapPin, MessageCircle,
   Palette, Phone, Plus, Ruler, Save, Shield, Trash2, TrendingUp,
-  Upload, User, Users, Weight, X, XCircle, Zap,
+  Upload, User, Users, Weight, X, XCircle, Zap, Copy, Share2,
 } from 'lucide-react';
 import CRMInput from '../components/crminput';
 
@@ -25,6 +25,7 @@ const TABS = [
   { id: 'Community', icon: Users, label: 'Community' },
   { id: 'Leads', icon: Mail, label: 'Leads' },
   { id: 'Settings', icon: Palette, label: 'Settings' },
+  { id: 'Share', icon: Share2, label: 'Share' },
 ];
 
 const MEDIA_CATEGORIES = [
@@ -103,6 +104,7 @@ const CRM = ({ player, theme, accentColor, settings, refreshData, refreshSetting
         {activeTab === 'Community' && <CommunityTab theme={theme} accentColor={accentColor} player={player} onBadgeUpdate={setCommunityBadge} />}
         {activeTab === 'Leads' && <LeadsTab theme={theme} accentColor={accentColor} />}
         {activeTab === 'Settings' && <SettingsTab theme={theme} accentColor={accentColor} settings={settings} refreshSettings={refreshSettings} player={player} />}
+        {activeTab === 'Share' && <ShareTab player={player} theme={theme} accentColor={accentColor} />}
       </div>
 
       {/* Logout confirm modal */}
@@ -1406,6 +1408,126 @@ const SettingsTab = ({ theme, accentColor, settings, refreshSettings }) => {
           The server self-pings every 13 minutes to prevent Render's free tier from sleeping.
           Add <code className={`px-1 rounded text-[10px] ${theme === 'dark' ? 'bg-black/40' : 'bg-neutral-200'}`}>RENDER_EXTERNAL_URL=https://your-app.onrender.com</code> to your Render environment variables to enable this.
         </p>
+      </div>
+    </div>
+  );
+};
+
+// ── ShareTab ──────────────────────────────────────────────────────────────────
+const ShareTab = ({ player, theme, accentColor }) => {
+  const [copied, setCopied] = useState(null);
+  const ac = accentColor || '#e10600';
+  const profileUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const isDark = theme === 'dark';
+  const textColor = isDark ? 'text-white' : 'text-neutral-900';
+  const mutedColor = isDark ? 'text-white/40' : 'text-neutral-500';
+  const cardClass = isDark ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5';
+
+  const copy = (text, key) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(null), 2200);
+    });
+  };
+
+  const whatsappMsg = `Hey! Check out ${player.name}'s official footballer profile 🔥\n\nStats, highlights, and contact info for scouts and clubs:\n${profileUrl}`;
+  const emailSubject = encodeURIComponent(`${player.name} — Professional Footballer Profile`);
+  const emailBody = encodeURIComponent(`Hi,\n\nI'd like to share ${player.name}'s official professional footballer profile with you.\n\nView stats, highlights, and contact info here:\n${profileUrl}\n\nBest,\n${player.name}`);
+  const tweetText = encodeURIComponent(`Check out ${player.name}'s official footballer profile 🔥⚽`);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(profileUrl)}&color=${isDark ? 'ffffff' : '111111'}&bgcolor=${isDark ? '111111' : 'f5f5f5'}&qzone=2`;
+
+  const SHARE_OPTIONS = [
+    { key: 'whatsapp', label: 'WhatsApp', sub: 'Send via chat', color: '#25D366', emoji: '📱', action: () => window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`, '_blank') },
+    { key: 'email', label: 'Email', sub: 'Send to inbox', color: ac, emoji: '✉️', action: () => window.open(`mailto:?subject=${emailSubject}&body=${emailBody}`, '_blank') },
+    { key: 'linkedin', label: 'LinkedIn', sub: 'Professional network', color: '#0A66C2', emoji: '💼', action: () => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}`, '_blank') },
+    { key: 'twitter', label: 'X / Twitter', sub: 'Post to timeline', color: isDark ? '#fff' : '#000', emoji: '𝕏', action: () => window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(profileUrl)}`, '_blank') },
+  ];
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-2" style={{ color: ac }}>Spread the Word</p>
+        <h2 className={`text-4xl font-black uppercase ${textColor}`}>Share Profile</h2>
+        <p className={`text-sm mt-2 ${mutedColor}`}>Send your profile to scouts, clubs, agents, and friends.</p>
+      </div>
+
+      {/* Profile URL */}
+      <div className={`p-6 rounded-3xl border ${cardClass}`}>
+        <p className="text-[10px] font-black uppercase tracking-widest mb-4" style={{ color: ac }}>Your Profile Link</p>
+        <div className="flex items-center gap-3">
+          <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-2xl border overflow-hidden ${isDark ? 'bg-black/30 border-white/8' : 'bg-white border-black/10'}`}>
+            <LinkIcon size={13} style={{ color: ac }} className="shrink-0" />
+            <span className={`text-sm font-mono truncate ${textColor}`}>{profileUrl}</span>
+          </div>
+          <button
+            onClick={() => copy(profileUrl, 'url')}
+            className={`shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition ${copied === 'url' ? 'text-white' : isDark ? 'text-white/60 border border-white/10 hover:border-white/25' : 'text-neutral-600 border border-black/10 hover:border-black/20'}`}
+            style={copied === 'url' ? { backgroundColor: ac } : {}}
+          >
+            {copied === 'url' ? <><CheckCircle size={13} /> Copied!</> : <><Copy size={13} /> Copy</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Quick share buttons */}
+      <div className={`p-6 rounded-3xl border ${cardClass}`}>
+        <p className="text-[10px] font-black uppercase tracking-widest mb-4" style={{ color: ac }}>Quick Share</p>
+        <div className="grid grid-cols-2 gap-3">
+          {SHARE_OPTIONS.map(opt => (
+            <button key={opt.key} onClick={opt.action}
+              className={`flex items-center gap-3 px-5 py-4 rounded-2xl border text-left transition hover:scale-[1.02] active:scale-[0.97] ${isDark ? 'border-white/8 hover:border-white/20 hover:bg-white/3' : 'border-black/8 hover:border-black/15 hover:bg-black/2'}`}>
+              <span className="text-2xl leading-none">{opt.emoji}</span>
+              <div>
+                <p className={`text-xs font-black ${textColor}`}>{opt.label}</p>
+                <p className={`text-[10px] ${mutedColor}`}>{opt.sub}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Pre-written message */}
+      <div className={`p-6 rounded-3xl border ${cardClass}`}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: ac }}>Ready-to-send Message</p>
+          <button
+            onClick={() => copy(whatsappMsg, 'msg')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${copied === 'msg' ? 'text-white' : isDark ? 'text-white/50 border border-white/10 hover:border-white/25' : 'text-neutral-500 border border-black/10 hover:border-black/20'}`}
+            style={copied === 'msg' ? { backgroundColor: ac } : {}}
+          >
+            {copied === 'msg' ? <><CheckCircle size={11} /> Copied!</> : <><Copy size={11} /> Copy</>}
+          </button>
+        </div>
+        <div className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-line select-all ${isDark ? 'bg-black/30 text-white/60 border border-white/5' : 'bg-white text-neutral-600 border border-black/5'}`}>
+          {whatsappMsg}
+        </div>
+        <p className={`text-[10px] mt-2 ${mutedColor}`}>Click "Copy" then paste into WhatsApp, iMessage, or anywhere.</p>
+      </div>
+
+      {/* QR Code */}
+      <div className={`p-6 rounded-3xl border ${cardClass}`}>
+        <p className="text-[10px] font-black uppercase tracking-widest mb-5" style={{ color: ac }}>QR Code</p>
+        <div className="flex items-start gap-6 flex-wrap">
+          <div className={`w-[140px] h-[140px] rounded-2xl overflow-hidden shrink-0 flex items-center justify-center ${isDark ? 'bg-black/40' : 'bg-neutral-100'}`}>
+            <img src={qrUrl} alt="Profile QR Code" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <p className={`font-black text-sm mb-2 ${textColor}`}>Scan to open your profile</p>
+            <p className={`text-xs leading-relaxed mb-5 ${mutedColor}`}>
+              Show this at trials, training sessions, or in-person meetings. Anyone with a phone camera opens your full profile instantly — no typing needed.
+            </p>
+            <a
+              href={qrUrl}
+              download="kagisho-blom-qr.png"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition"
+              style={{ backgroundColor: ac }}
+            >
+              <Share2 size={12} /> Download QR
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
