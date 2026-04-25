@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'framer-motion';
 import StatBox from '../components/statbox';
 import { Activity, Target, Zap, TrendingUp } from 'lucide-react';
@@ -45,9 +45,9 @@ const Stats = ({ player, theme, accentColor }) => {
             <h3 className={`text-xl font-black uppercase ${textColor}`}>Attacking Efficiency</h3>
           </div>
           <div className="space-y-8">
-            <ProgressBar label="Shot Conversion" display={player.shot_conversion || '0%'} percent={parsePercent(player.shot_conversion)} theme={theme} accentColor={ac} />
-            <ProgressBar label="Dribble Success"  display={player.dribble_success  || '0%'} percent={parsePercent(player.dribble_success)}  theme={theme} accentColor={ac} />
-            <ProgressBar label="Pass Accuracy"    display={player.pass_accuracy    || '0%'} percent={parsePercent(player.pass_accuracy)}    theme={theme} accentColor={ac} />
+            <ProgressBar label="Shot Conversion" display={player.shot_conversion || '0%'} percent={parsePercent(player.shot_conversion)} theme={theme} accentColor={ac} index={0} />
+            <ProgressBar label="Dribble Success"  display={player.dribble_success  || '0%'} percent={parsePercent(player.dribble_success)}  theme={theme} accentColor={ac} index={1} />
+            <ProgressBar label="Pass Accuracy"    display={player.pass_accuracy    || '0%'} percent={parsePercent(player.pass_accuracy)}    theme={theme} accentColor={ac} index={2} />
             <StatRow label="Chances Created" value={player.chances_created || '—'} theme={theme} />
             <StatRow label="Recoveries / 90" value={player.recoveries      || '—'} theme={theme} />
           </div>
@@ -79,14 +79,32 @@ const Stats = ({ player, theme, accentColor }) => {
   );
 };
 
-const ProgressBar = ({ label, display, percent, theme, accentColor }) => (
+const ProgressBar = ({ label, display, percent, theme, accentColor, index = 0 }) => (
   <div>
     <div className="flex justify-between mb-3">
       <span className={`text-[10px] font-bold uppercase tracking-widest opacity-40 ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>{label}</span>
-      <span className={`text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}>{display}</span>
+      <motion.span
+        className={`text-[10px] font-black ${theme === 'dark' ? 'text-white' : 'text-neutral-900'}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 + index * 0.12, duration: 0.4 }}
+      >{display}</motion.span>
     </div>
-    <div className={`h-1.5 w-full rounded-full ${theme === 'dark' ? 'bg-white/5' : 'bg-black/10'}`}>
-      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${percent}%`, backgroundColor: accentColor }} />
+    <div className={`h-1.5 w-full rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-black/10'}`}>
+      <motion.div
+        className="h-full rounded-full relative overflow-hidden"
+        initial={{ width: 0 }}
+        animate={{ width: `${percent}%` }}
+        transition={{ duration: 1.1, delay: 0.2 + index * 0.12, ease: [0.25, 0.46, 0.45, 0.94] }}
+        style={{ background: `linear-gradient(90deg, ${accentColor}99, ${accentColor}, ${accentColor}dd)` }}
+      >
+        <motion.div
+          className="absolute inset-0"
+          animate={{ x: ['−100%', '100%'] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'linear', delay: 1.2 + index * 0.12 }}
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)', width: '60%' }}
+        />
+      </motion.div>
     </div>
   </div>
 );

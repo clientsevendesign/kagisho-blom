@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 import {
   Activity, AtSign, Award, BarChart3, Bot, Camera, Calendar,
@@ -1043,26 +1044,52 @@ const TrendsTab = ({ theme, accentColor }) => {
       </div>
 
       {/* Sparklines */}
-      {metrics.map(({ key, label, color }) => {
+      {metrics.map(({ key, label, color }, mi) => {
         const values = history.map(h => parseNum(h[key]));
         const max = Math.max(...values, 1);
         const labels = history.map(h => h.label || new Date(h.snapped_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }));
-        const W = 600, H = 80, pad = 12;
-        const pts = values.map((v, i) => `${pad + (i / (values.length - 1 || 1)) * (W - pad * 2)},${H - pad - (v / max) * (H - pad * 2)}`).join(' ');
+        const W = 600, H = 90, pad = 14;
+        const coords = values.map((v, i) => ({
+          x: pad + (i / (values.length - 1 || 1)) * (W - pad * 2),
+          y: H - pad - (v / max) * (H - pad * 2),
+        }));
+        const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+        const fillD = pathD + ` L ${coords[coords.length - 1].x} ${H - pad} L ${coords[0].x} ${H - pad} Z`;
+        const maxShow = 4;
+        const shownIdx = new Set([0, labels.length - 1]);
+        if (labels.length > 2) { const step = Math.max(1, Math.floor((labels.length - 1) / (maxShow - 1))); for (let i = step; i < labels.length - 1; i += step) shownIdx.add(i); }
         return (
           <div key={key} className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
             <div className="flex items-center justify-between mb-4">
               <p className={`text-[10px] font-black uppercase tracking-widest ${mutedColor}`}>{label}</p>
-              <span className="text-xs font-black" style={{ color }}>{parseNum(latest[key])}</span>
+              <motion.span className="text-xs font-black" style={{ color }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 + mi * 0.1 }}>{parseNum(latest[key])}</motion.span>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-              <polyline points={pts + ` ${W - pad},${H - pad} ${pad},${H - pad}`} fill={color + '20'} stroke="none" />
-              <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-              {values.map((v, i) => { const x = pad + (i / (values.length - 1 || 1)) * (W - pad * 2), y = H - pad - (v / max) * (H - pad * 2); return <circle key={i} cx={x} cy={y} r="4" fill={color} stroke="white" strokeWidth="1.5" />; })}
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-visible">
+              <motion.path d={fillD} fill={color + '18'} stroke="none" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 + mi * 0.1 }} />
+              <motion.path
+                d={pathD}
+                fill="none"
+                stroke={color}
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 1.3, delay: 0.2 + mi * 0.12, ease: [0.25, 0.46, 0.45, 0.94] }}
+              />
+              {coords.map((c, i) => (
+                <motion.circle key={i} cx={c.x} cy={c.y} r="4" fill={color} stroke={theme === 'dark' ? '#111' : 'white'} strokeWidth="1.5"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.9 + mi * 0.1 + i * 0.05, duration: 0.2, type: 'spring', stiffness: 300 }}
+                />
+              ))}
             </svg>
-            <div className="flex justify-between mt-1 px-1">
+            <div className="flex justify-between mt-2">
               {labels.map((l, i) => (
-                <span key={i} className={`text-[9px] ${mutedColor}`} style={{ width: `${100 / labels.length}%`, textAlign: i === 0 ? 'left' : i === labels.length - 1 ? 'right' : 'center' }}>{l}</span>
+                shownIdx.has(i) ? (
+                  <span key={i} className={`text-[9px] font-medium ${mutedColor}`} style={{ textAlign: i === 0 ? 'left' : i === labels.length - 1 ? 'right' : 'center' }}>{l}</span>
+                ) : <span key={i} className="flex-1" />
               ))}
             </div>
           </div>
