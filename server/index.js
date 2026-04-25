@@ -498,7 +498,7 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const p = await getPlayer();
-    const [cp, cpPhotos] = await Promise.all([getChatbotProfile(), getChatbotPhotos()]);
+    const [cp, cpPhotos, follows, comments] = await Promise.all([getChatbotProfile(), getChatbotPhotos(), getCommunityFollows(), getCommunityComments()]);
 
     const f = (v) => v || null;
     const friends = [cp.friend_1, cp.friend_2, cp.friend_3, cp.friend_4, cp.friend_5].filter(Boolean).join(', ');
@@ -570,6 +570,11 @@ Football stats and career:
 - Bio: ${p.bio}
 - Achievements: ${p.achievements || 'Still building my career'}
 ${personalSection ? '\nPersonal background:\n' + personalSection : ''}${familySection ? '\nFamily:\n' + familySection : ''}${socialSection ? '\nFriends & coach:\n' + socialSection : ''}${personalitySection ? '\nPersonality & interests:\n' + personalitySection : ''}
+Community:
+- Followers (fans who joined your squad): ${follows.length}
+- Wall comments from fans: ${comments.length}
+- If asked about followers, you can say things like "I've got ${follows.length} people in my squad on here"
+
 Contact & Socials:
 - WhatsApp: ${p.whatsapp || 'not listed'}
 - Email: ${p.email || 'not listed'}
