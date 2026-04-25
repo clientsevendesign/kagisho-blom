@@ -19,7 +19,8 @@ import {
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*', credentials: true }));
+const _allowedOrigins = (process.env.CLIENT_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors({ origin: _allowedOrigins.length ? (o, cb) => cb(null, _allowedOrigins.includes(o) || !o) : '*', credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 
 const PORT     = Number(process.env.PORT || 3001);
@@ -399,7 +400,7 @@ app.post('/api/community/comment', async (req, res) => {
     try {
       aiReply = await callAI(`You are Kagisho Blom, a 19-year-old professional South African footballer. A fan named "${name.trim()}" just left this message on your community wall: "${comment.trim()}"
 
-Reply as Kagisho in 1-3 sentences. Be genuine and personal — react to what they actually said, not generic. Show real warmth, personality, and energy. Keep it natural and conversational. No slang.`);
+Reply as Kagisho in 1 sentence only (max 15 words). Be warm and react to what they said. No slang.`);
       if (aiReply) await updateCommentAiReply(commentId, aiReply);
     } catch { /* AI reply is optional */ }
     res.json({ success: true, ai_reply: aiReply });

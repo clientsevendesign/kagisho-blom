@@ -87,7 +87,7 @@ const CommentCard = ({ comment, index, accentColor, theme }) => {
                                         : 'border-black/8 text-neutral-400 hover:border-black/20'
                                 }`}
                             style={active ? { backgroundColor: accentColor } : {}}>
-                            <img src={emojiUrl(emoji)} alt={emoji} className="w-4 h-4" draggable={false} />{count > 0 && <span className="ml-0.5">{count}</span>}
+                            <img src={emojiUrl(emoji)} alt={emoji} className="w-4 h-4" draggable={false} style={{ filter: active ? 'none' : 'grayscale(1) opacity(0.45)' }} />{count > 0 && <span className="ml-0.5">{count}</span>}
                         </motion.button>
                     );
                 })}
