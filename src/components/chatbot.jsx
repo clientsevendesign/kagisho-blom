@@ -11,6 +11,7 @@ const STARTER_SUGGESTIONS = [
   "How many goals this season?",
   "Are you available for trials?",
   "How can I contact your team?",
+  "Quiz me — how well do you know me?",
 ];
 
 const ChatMessage = ({ msg, accentColor, theme }) => {
@@ -112,7 +113,7 @@ const Chatbot = ({ accentColor, theme, player }) => {
 
   const makeGreeting = () => ({
     role: 'assistant',
-    content: `Awe, Keyang`,
+    content: `Hey, Kagisho here.`,
   });
 
   const [open, setOpen] = useState(false);
@@ -124,7 +125,56 @@ const Chatbot = ({ accentColor, theme, player }) => {
   const inputRef = useRef(null);
   const ac = accentColor || '#e10600';
 
-  const clearChat = () => setMessages([makeGreeting()]);
+  const clearChat = () => { setMessages([makeGreeting()]); setQuiz(null); };
+  const [quiz, setQuiz] = useState(null);
+
+  const _shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+  const _nearby = (n) => _shuffle([n, n+1, n+3, Math.max(0,n-1)].map(String)).slice(0,4);
+
+  const buildQuestions = () => {
+    const p = player || {};
+    return [
+      { q: `What position does ${(p.name||'Kagisho').split(' ')[0]} play?`, opts: _shuffle(['Midfielder','Striker','Goalkeeper','Defender']), correct: p.position || 'Midfielder' },
+      { q: 'How many goals this season?', opts: _nearby(Number(p.goals)||0), correct: String(Number(p.goals)||0) },
+      { q: 'Which club does he play for?', opts: _shuffle([p.club||'Kimberley United FC','Orlando Pirates','Mamelodi Sundowns','Kaizer Chiefs']), correct: p.club || 'Kimberley United FC' },
+      { q: 'What is his preferred foot?', opts: _shuffle(['Right','Left','Both','Either']), correct: p.preferred_foot || 'Right' },
+      { q: 'What jersey number does he wear?', opts: _shuffle([String(p.jersey_number||'15'),'10','7','8']), correct: String(p.jersey_number||'15') },
+    ];
+  };
+
+  const startQuiz = () => {
+    const questions = buildQuestions();
+    setQuiz({ questions, idx: 0, score: 0 });
+    setMessages(prev => [...prev,
+      { role: 'assistant', content: "Let's go! 5 quick questions — how well do you know me?" },
+      { role: 'assistant', type: 'quiz', ...questions[0], qNum: 1, total: questions.length, onAnswer: answerQuiz },
+    ]);
+  };
+
+  const answerQuiz = (selected) => {
+    setQuiz(prev => {
+      if (!prev) return null;
+      const cur = prev.questions[prev.idx];
+      const isCorrect = selected === cur.correct;
+      const newScore = prev.score + (isCorrect ? 1 : 0);
+      const newIdx = prev.idx + 1;
+      const done = newIdx >= prev.questions.length;
+      setMessages(msgs => {
+        const next = [...msgs,
+          { role: 'user', content: selected },
+          { role: 'assistant', content: isCorrect ? 'Correct!' : `Not quite — it is "${cur.correct}".` },
+        ];
+        if (!done) {
+          next.push({ role: 'assistant', type: 'quiz', ...prev.questions[newIdx], qNum: newIdx + 1, total: prev.questions.length, onAnswer: answerQuiz });
+        } else {
+          const pct = Math.round((newScore / prev.questions.length) * 100);
+          next.push({ role: 'assistant', content: `${newScore}/${prev.questions.length} — ${pct}%. ${pct>=80?'You really know me!':pct>=60?'Solid fan!':'We need to get acquainted better.'}` });
+        }
+        return next;
+      });
+      return done ? null : { ...prev, idx: newIdx, score: newScore };
+    });
+  };
 
   useEffect(() => {
     if (open) { setHasUnread(false); setTimeout(() => inputRef.current?.focus(), 200); }
@@ -148,6 +198,13 @@ const Chatbot = ({ accentColor, theme, player }) => {
     const lower = content.toLowerCase();
     const isCV = CV_KEYWORDS.some(k => lower.includes(k));
     const isContact = CONTACT_KEYWORDS.some(k => lower.includes(k));
+    const QUIZ_KW = ['quiz', 'test me', 'trivia', 'challenge me', 'how well do you know'];
+    const isQuiz = QUIZ_KW.some(k => lower.includes(k));
+    if (isQuiz && !quiz) {
+      setLoading(false);
+      startQuiz();
+      return;
+    }
     const apiMessages = history
       .filter((m, idx) => !(idx === 0 && m.role === 'assistant'))
       .map(m => ({ role: m.role, content: m.content }));

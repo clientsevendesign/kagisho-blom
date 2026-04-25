@@ -1563,7 +1563,6 @@ const ShareTab = ({ player, theme, accentColor }) => {
   );
 };
 
-export default CRM;
 // ── CHATBOT PROFILE TAB ───────────────────────────────────────────────────────
 
 const CHATBOT_FIELDS = [
@@ -1701,7 +1700,7 @@ const ChatbotProfileTab = ({ theme, accentColor }) => {
         </div>
       ))}
 
-      <SaveBar saving={saving} saved={saved} saveErr={null} accentColor={accentColor} onClick={save} />
+      <SaveBar saving={saving} saved={saved} saveErr={null} accentColor={accentColor} onSave={save} />
 
       {/* Photos */}
       <div>
@@ -1746,3 +1745,5 @@ const ChatbotProfileTab = ({ theme, accentColor }) => {
     </div>
   );
 };
+
+export default CRM;

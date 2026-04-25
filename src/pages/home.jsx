@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Phone, Calendar, MapPin, Send, Mail, MessageSquare, User, Users, ChevronRight } from 'lucide-react';
@@ -12,6 +12,7 @@ const Home = ({ player, theme, accentColor, settings }) => {
   const [formLoading, setFormLoading] = useState(false);
   const [formSent, setFormSent] = useState(false);
   const [communityStats, setCommunityStats] = useState({ totalFollowers: 0 });
+  const [formStatus, setFormStatus] = useState('');
 
   const nameParts = player.name?.split(' ') || ['Player'];
   const firstName = nameParts[0];
@@ -24,6 +25,7 @@ const Home = ({ player, theme, accentColor, settings }) => {
     axios.get('/api/fixtures').then(r => setFixtures(r.data)).catch(() => { });
     axios.get('/api/media').then(r => setMedia(r.data || [])).catch(() => { });
     axios.get('/api/community/stats').then(r => setCommunityStats(r.data)).catch(() => { });
+    axios.get('/api/form-status').then(r => setFormStatus(r.data.status || '')).catch(() => { });
   }, []);
 
   const handleContactSubmit = async (e) => {
@@ -62,6 +64,22 @@ const Home = ({ player, theme, accentColor, settings }) => {
               <span className={`text-xs font-bold uppercase tracking-widest opacity-40 ${textColor}`}>
                 {communityStats.totalFollowers} Followers
               </span>
+            )}
+            {formStatus && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+                className="flex items-center gap-2"
+              >
+                <motion.span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: accentColor }}
+                  animate={{ opacity: [1, 0.2, 1] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <span className={`text-[11px] font-medium italic opacity-60 ${textColor}`}>{formStatus}</span>
+              </motion.div>
             )}
           </div>
         </div>
