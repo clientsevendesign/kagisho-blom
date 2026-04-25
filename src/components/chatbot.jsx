@@ -10,7 +10,6 @@ const STARTER_SUGGESTIONS = [
   "How many goals this season?",
   "Are you available for trials?",
   "How can I contact your team?",
-  "Download your CV",
 ];
 
 const ChatMessage = ({ msg, accentColor, theme }) => {
@@ -109,7 +108,7 @@ const TypingIndicator = ({ accentColor, theme }) => (
 const Chatbot = ({ accentColor, theme, player }) => {
   const makeGreeting = () => ({
     role: 'assistant',
-    content: `Hey! I'm ${player?.name || 'Kagisho'} 👋 Ask me anything — my stats, availability for trials, or how to reach my team.`,
+    content: `Hey, Kagisho here.`,
   });
 
   const [open, setOpen] = useState(false);
@@ -254,13 +253,27 @@ const Chatbot = ({ accentColor, theme, player }) => {
             </div>
 
             {messages.length === 1 && !loading && (
-              <div className={`px-4 pb-3 flex flex-wrap gap-1.5 border-t pt-3 ${borderCol}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.35 }}
+                className={`px-4 pb-3 flex flex-wrap gap-1.5 border-t pt-3 ${borderCol}`}
+              >
                 {STARTER_SUGGESTIONS.map((s, i) => (
-                  <button key={i} onClick={() => sendMessage(s)} className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition hover:opacity-80 ${isDark ? 'border-white/10 text-white/50 hover:border-white/20' : 'border-black/10 text-neutral-500'}`}>
+                  <motion.button
+                    key={i}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 + i * 0.07, duration: 0.25 }}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => sendMessage(s)}
+                    className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition-colors ${isDark ? 'border-white/10 text-white/50 hover:border-white/25 hover:text-white/70' : 'border-black/10 text-neutral-500 hover:border-black/20 hover:text-neutral-700'}`}
+                  >
                     {s}
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+              </motion.div>
             )}
 
             <div className={`px-4 py-3 border-t ${borderCol}`}>
