@@ -931,6 +931,23 @@ app.patch('/api/leads/:id/read', requireAuth, async (req, res) => {
   try { await markLeadRead(req.params.id); res.json({ success: true }); } catch (e) { res.status(500).json({error:e.message}); }
 });
 
+
+// ── AI Form Status (public, cached 6h) ───────────────────────────────────────
+let _formStatusCache = { text: null, ts: 0 };
+app.get('/api/form-status', async (_req, res) => {
+  try {
+    const now = Date.now();
+    if (_formStatusCache.text && (now - _formStatusCache.ts) < 1000 * 60 * 60 * 6)
+      return res.json({ status: _formStatusCache.text });
+    const [p, history] = await Promise.all([getPlayer(), getPlayerHistory(5)]);
+    const recent = history.slice(-3).map(h => `goals:${h.goals} assists:${h.assists}`).join(', ');
+    const prompt = 'You are Kagisho Blom. Based on recent stats (' + (recent || (p.goals + ' goals, ' + p.assists + ' assists')) + '), write one punchy first-person sentence under 12 words about your current form. No quotes, no hashtags, no emoji.';
+    const text = await callAI(prompt);
+    _formStatusCache = { text: text ? text.replace(/["']/g,'').trim() : (p.goals + ' goals, ' + p.assists + ' assists - on the grind.'), ts: now };
+    res.json({ status: _formStatusCache.text });
+  } catch { res.json({ status: null }); }
+});
+
 // History
 app.get('/api/history', requireAuth, async (req, res) => {
   try { res.json(await getPlayerHistory(Number(req.query.limit)||20)); } catch (e) { res.status(500).json({error:e.message}); }
