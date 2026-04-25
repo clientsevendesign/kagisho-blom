@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, MessageCircle, Phone, Mail, Bot, Download, Trash2 } from 'lucide-react';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const STARTER_SUGGESTIONS = [
   "What position do you play?",
   "How many goals this season?",
@@ -54,7 +56,7 @@ const ChatMessage = ({ msg, accentColor, theme }) => {
         </div>
         <div className="space-y-2 flex-1">
           <p className={`text-sm leading-relaxed ${textColor}`}>{msg.content}</p>
-          <a href="/api/cv" target="_blank" rel="noreferrer"
+          <a href={`${API_BASE}/api/cv`} target="_blank" rel="noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white hover:brightness-110 transition"
             style={{ backgroundColor: accentColor }}>
             <Download size={14} /> Download CV / Scout Profile

@@ -11,6 +11,7 @@ import CRMInput from '../components/crminput';
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'kagisho_media';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 // AI calls go through the server /api/chat endpoint (Gemini key stays server-side)
 
 const TABS = [
@@ -64,7 +65,7 @@ const CRM = ({ player, theme, accentColor, settings, refreshData, refreshSetting
             <h2 className={`text-4xl font-black uppercase ${textColor}`}>Control Panel</h2>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/api/cv" target="_blank" rel="noreferrer"
+            <a href={`${API_BASE}/api/cv`} target="_blank" rel="noreferrer"
               className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 font-black uppercase text-[10px] tracking-widest transition hover:text-white ${theme === 'dark' ? 'bg-white text-black hover:bg-soccer-red' : 'bg-neutral-900 text-white hover:bg-soccer-red'}`}>
               <FileText size={14} /> Scout CV
             </a>
