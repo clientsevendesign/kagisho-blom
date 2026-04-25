@@ -28,6 +28,7 @@ const TABS = [
   { id: 'Leads', icon: Mail, label: 'Leads' },
   { id: 'Settings', icon: Palette, label: 'Settings' },
   { id: 'Share', icon: Share2, label: 'Share' },
+  { id: 'ChatbotSetup', icon: MessageCircle, label: 'Chatbot' },
 ];
 
 const MEDIA_CATEGORIES = [
@@ -107,6 +108,7 @@ const CRM = ({ player, theme, accentColor, settings, refreshData, refreshSetting
         {activeTab === 'Leads' && <LeadsTab theme={theme} accentColor={accentColor} />}
         {activeTab === 'Settings' && <SettingsTab theme={theme} accentColor={accentColor} settings={settings} refreshSettings={refreshSettings} player={player} />}
         {activeTab === 'Share' && <ShareTab player={player} theme={theme} accentColor={accentColor} />}
+        {activeTab === 'ChatbotSetup' && <ChatbotProfileTab theme={theme} accentColor={accentColor} />}
       </div>
 
       {/* Logout confirm modal */}
@@ -1562,3 +1564,185 @@ const ShareTab = ({ player, theme, accentColor }) => {
 };
 
 export default CRM;
+// ── CHATBOT PROFILE TAB ───────────────────────────────────────────────────────
+
+const CHATBOT_FIELDS = [
+  { section: 'Personal', fields: [
+    { key: 'hometown',  label: 'Hometown',  placeholder: 'e.g. Kimberley, Northern Cape' },
+    { key: 'birthday',  label: 'Birthday',  placeholder: 'e.g. 14 March 2005' },
+    { key: 'biography', label: 'Personal Biography', placeholder: 'Write a personal story in your own words...', rows: 4 },
+  ]},
+  { section: 'Family', fields: [
+    { key: 'mother_name', label: 'Mother\'s Name',  placeholder: 'e.g. Dikeledi Blom' },
+    { key: 'father_name', label: 'Father\'s Name',  placeholder: 'e.g. Tebogo Blom' },
+    { key: 'sibling_1',   label: 'Sibling 1',       placeholder: 'Name' },
+    { key: 'sibling_2',   label: 'Sibling 2',       placeholder: 'Name' },
+    { key: 'sibling_3',   label: 'Sibling 3',       placeholder: 'Name' },
+    { key: 'cousin_1',    label: 'Cousin 1',         placeholder: 'Name' },
+    { key: 'cousin_2',    label: 'Cousin 2',         placeholder: 'Name' },
+    { key: 'cousin_3',    label: 'Cousin 3',         placeholder: 'Name' },
+  ]},
+  { section: 'Friends & Coach', fields: [
+    { key: 'coach_name',  label: 'Coach Name',  placeholder: 'e.g. Coach Sithole' },
+    { key: 'friend_1',    label: 'Friend 1',    placeholder: 'Name' },
+    { key: 'friend_2',    label: 'Friend 2',    placeholder: 'Name' },
+    { key: 'friend_3',    label: 'Friend 3',    placeholder: 'Name' },
+    { key: 'friend_4',    label: 'Friend 4',    placeholder: 'Name' },
+    { key: 'friend_5',    label: 'Friend 5',    placeholder: 'Name' },
+    { key: 'teammate_1',  label: 'Teammate 1',  placeholder: 'Name' },
+    { key: 'teammate_2',  label: 'Teammate 2',  placeholder: 'Name' },
+    { key: 'teammate_3',  label: 'Teammate 3',  placeholder: 'Name' },
+  ]},
+  { section: 'Personality & Interests', fields: [
+    { key: 'likes',      label: 'Things I Love',   placeholder: 'e.g. Music, dogs, road trips...', rows: 2 },
+    { key: 'dislikes',   label: 'Things I Dislike', placeholder: 'e.g. Being late, cold weather...', rows: 2 },
+    { key: 'hobbies',    label: 'Hobbies',          placeholder: 'e.g. Gaming, gym, fishing...' },
+    { key: 'fun_facts',  label: 'Fun Facts',        placeholder: 'e.g. I can juggle a ball 300 times...', rows: 2 },
+    { key: 'fav_music',  label: 'Favourite Music',  placeholder: 'e.g. Amapiano, Drake, Nasty C' },
+    { key: 'fav_food',   label: 'Favourite Food',   placeholder: 'e.g. Pap and wors' },
+    { key: 'fav_team',   label: 'Favourite Team',   placeholder: 'e.g. Kaizer Chiefs, Barcelona' },
+    { key: 'fav_movie',  label: 'Favourite Movie',  placeholder: 'e.g. Black Panther' },
+  ]},
+];
+
+const ChatbotProfileTab = ({ theme, accentColor }) => {
+  const [form, setForm] = useState({});
+  const [photos, setPhotos] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [captionInput, setCaptionInput] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
+  const fileRef = useRef(null);
+
+  const isDark = theme === 'dark';
+  const textColor = isDark ? 'text-white' : 'text-neutral-900';
+  const mutedColor = isDark ? 'text-white/40' : 'text-neutral-400';
+  const panelClass = isDark ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5';
+  const inputClass = isDark
+    ? 'bg-white/5 border-white/8 text-white placeholder:text-white/20'
+    : 'bg-white border-black/10 text-neutral-900 placeholder:text-neutral-400';
+
+  useEffect(() => {
+    Promise.all([
+      axios.get('/api/crm/chatbot-profile').then(r => setForm(r.data || {})).catch(() => {}),
+      axios.get('/api/crm/chatbot-photos').then(r => setPhotos(r.data || [])).catch(() => {}),
+    ]);
+  }, []);
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    try { await axios.post('/api/crm/chatbot-profile', form); setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    catch { alert('Save failed.'); }
+    finally { setSaving(false); }
+  };
+
+  const uploadPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('caption', captionInput);
+      const res = await axios.post('/api/crm/chatbot-photos', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setPhotos(prev => [res.data, ...prev]);
+      setCaptionInput('');
+      if (fileRef.current) fileRef.current.value = '';
+    } catch { alert('Upload failed.'); }
+    finally { setUploading(false); }
+  };
+
+  const deletePhoto = async (id) => {
+    if (!window.confirm('Delete this photo?')) return;
+    setDeleteId(id);
+    try {
+      await axios.delete(`/api/crm/chatbot-photos/${id}`);
+      setPhotos(prev => prev.filter(p => p.id !== id));
+    } catch { alert('Delete failed.'); }
+    finally { setDeleteId(null); }
+  };
+
+  return (
+    <div className="space-y-10 max-w-3xl">
+      <div className={`p-4 rounded-2xl border text-[11px] font-bold ${panelClass} ${mutedColor}`}>
+        Everything you fill in here gets injected into the chatbot's AI brain — the more detail, the more personal and real the responses.
+      </div>
+
+      {CHATBOT_FIELDS.map(({ section, fields }) => (
+        <div key={section}>
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-4 ${mutedColor}`}>{section}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {fields.map(({ key, label, placeholder, rows }) => (
+              <div key={key} className={rows && rows > 1 ? 'sm:col-span-2' : ''}>
+                <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${mutedColor}`}>{label}</label>
+                {rows ? (
+                  <textarea
+                    value={form[key] || ''}
+                    onChange={e => set(key, e.target.value)}
+                    placeholder={placeholder}
+                    rows={rows}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none resize-none transition ${inputClass}`}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={form[key] || ''}
+                    onChange={e => set(key, e.target.value)}
+                    placeholder={placeholder}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition ${inputClass}`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <SaveBar saving={saving} saved={saved} saveErr={null} accentColor={accentColor} onClick={save} />
+
+      {/* Photos */}
+      <div>
+        <p className={`text-[10px] font-black uppercase tracking-widest mb-4 ${mutedColor}`}>Chatbot Photos</p>
+        <div className={`p-5 rounded-2xl border mb-6 ${panelClass}`}>
+          <p className={`text-[11px] mb-3 ${mutedColor}`}>Upload photos the chatbot can share inline when fans ask.</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              value={captionInput}
+              onChange={e => setCaptionInput(e.target.value)}
+              placeholder="Caption (optional)"
+              className={`flex-1 px-3 py-2 rounded-xl border text-sm outline-none transition ${inputClass}`}
+            />
+            <label className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-white cursor-pointer hover:brightness-110 transition shrink-0"
+              style={{ backgroundColor: accentColor }}>
+              {uploading ? 'Uploading...' : 'Choose Photo'}
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadPhoto} disabled={uploading} />
+            </label>
+          </div>
+        </div>
+
+        {photos.length === 0 ? (
+          <p className={`text-[11px] text-center py-8 ${mutedColor}`}>No photos yet — upload some above.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {photos.map(photo => (
+              <div key={photo.id} className={`rounded-2xl border overflow-hidden ${panelClass}`}>
+                <img src={photo.url} alt={photo.caption || 'Photo'} className="w-full h-40 object-cover" />
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <p className={`text-[10px] flex-1 truncate ${mutedColor}`}>{photo.caption || 'No caption'}</p>
+                  <button onClick={() => deletePhoto(photo.id)} disabled={deleteId === photo.id}
+                    className="text-red-400 hover:text-red-500 transition shrink-0">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

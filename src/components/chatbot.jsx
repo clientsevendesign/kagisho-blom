@@ -1,4 +1,5 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, MessageCircle, Phone, Mail, Bot, Download, Trash2 } from 'lucide-react';
 import axios from 'axios';
@@ -75,10 +76,10 @@ const ChatMessage = ({ msg, accentColor, theme }) => {
       )}
       <div
         className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${isBot
-            ? isDark
-              ? 'bg-white/8 text-white rounded-bl-sm'
-              : 'bg-neutral-100 text-neutral-900 rounded-bl-sm'
-            : 'text-white rounded-br-sm'
+          ? isDark
+            ? 'bg-white/8 text-white rounded-bl-sm'
+            : 'bg-neutral-100 text-neutral-900 rounded-bl-sm'
+          : 'text-white rounded-br-sm'
           }`}
         style={!isBot ? { backgroundColor: accentColor } : {}}
       >
@@ -106,9 +107,12 @@ const TypingIndicator = ({ accentColor, theme }) => (
 );
 
 const Chatbot = ({ accentColor, theme, player }) => {
+  const location = useLocation();
+  if (location.pathname.startsWith('/crm')) return null;
+
   const makeGreeting = () => ({
     role: 'assistant',
-    content: `Hey, Kagisho here.`,
+    content: `Awe, Keyang`,
   });
 
   const [open, setOpen] = useState(false);
@@ -150,7 +154,9 @@ const Chatbot = ({ accentColor, theme, player }) => {
     try {
       const res = await axios.post('/api/chat', { messages: apiMessages });
       const reply = res.data.reply || "Let me get back to you on that!";
-      if (isCV) {
+      if (res.data.photos && res.data.photos.length) {
+        setMessages(prev => [...prev, { role: 'assistant', type: 'photos', content: reply, photos: res.data.photos }]);
+      } else if (isCV) {
         setMessages(prev => [...prev, { role: 'assistant', type: 'cv', content: reply }]);
       } else if (isContact && (res.data.whatsapp || res.data.email)) {
         setMessages(prev => [...prev, { role: 'assistant', type: 'contact', content: reply, whatsapp: res.data.whatsapp, email: res.data.email }]);

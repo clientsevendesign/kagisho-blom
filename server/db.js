@@ -93,6 +93,17 @@ export const bootstrapSchema = async () => {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS chatbot_profile (
+      id   INTEGER PRIMARY KEY DEFAULT 1,
+      data TEXT    DEFAULT ''{}''
+    )`,
+    `CREATE TABLE IF NOT EXISTS chatbot_photos (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      url         TEXT    NOT NULL,
+      public_id   TEXT    NOT NULL DEFAULT '''',
+      caption     TEXT    DEFAULT '''',
+      uploaded_at TEXT    DEFAULT (datetime(''now''))
+    )`,
   ];
 
   for (const sql of tables) {
@@ -413,4 +424,39 @@ export const saveLog = async (level, message, meta = null) => {
 export const getLogs = async (limit = 200) => {
   const result = await db.execute({ sql: `SELECT * FROM server_logs ORDER BY created_at DESC LIMIT ?`, args: [limit] });
   return result.rows.reverse();
+};
+// ── Chatbot profile ───────────────────────────────────────────────────────────
+
+export const getChatbotProfile = async () => {
+  const result = await db.execute({ sql: `SELECT data FROM chatbot_profile WHERE id = 1 LIMIT 1`, args: [] });
+  try { return JSON.parse(result.rows[0]?.data || '{}'); } catch { return {}; }
+};
+
+export const saveChatbotProfile = async (data) => {
+  await db.execute({
+    sql: `INSERT INTO chatbot_profile (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`,
+    args: [JSON.stringify(data)],
+  });
+};
+
+// ── Chatbot photos ────────────────────────────────────────────────────────────
+
+export const getChatbotPhotos = async () => {
+  const result = await db.execute({ sql: `SELECT * FROM chatbot_photos ORDER BY uploaded_at DESC`, args: [] });
+  return result.rows;
+};
+
+export const saveChatbotPhoto = async ({ url, public_id, caption }) => {
+  const result = await db.execute({
+    sql: `INSERT INTO chatbot_photos (url, public_id, caption) VALUES (?, ?, ?)`,
+    args: [url, public_id, caption || ''],
+  });
+  return result.lastInsertRowid;
+};
+
+export const deleteChatbotPhoto = async (id) => {
+  const result = await db.execute({ sql: `SELECT public_id FROM chatbot_photos WHERE id = ?`, args: [id] });
+  const publicId = result.rows[0]?.public_id || null;
+  await db.execute({ sql: `DELETE FROM chatbot_photos WHERE id = ?`, args: [id] });
+  return publicId;
 };
