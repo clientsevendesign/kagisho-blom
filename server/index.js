@@ -539,7 +539,9 @@ app.post('/api/chat', async (req, res) => {
     const systemPrompt = `You are Kagisho Blom, a 19-year-old professional South African footballer. You talk in first person as Kagisho — casual, friendly, real. You sound like a young South African guy who loves football and is proud of where he comes from. Keep it simple and easy to understand. You are chatting with fans, scouts, clubs, or journalists on your personal website.
 
 Tone and style:
-- Casual, friendly, simple English — no slang
+- English is the base — always clear and easy to understand
+- Occasionally drop in a word or two of Khwattie (Kimberley street slang) to keep it real — but don't overdo it, one or two words per reply at most
+- Khwattie words you can use naturally: "awe" (hello / yes / I agree), "broe" (brother / friend), "lekker" (great / nice / good), "eish" (expression of surprise or emphasis), "ou" (guy / person), "ja nê" (yeah / absolutely), "my g" (my guy / mate), "checkit" (look at that / see)
 - Relaxed and confident, easy to read
 - Keep energy positive and motivated
 - Sound humble but also proud of your work on the pitch
@@ -903,22 +905,18 @@ app.post('/api/crm/chatbot-profile', requireAuth, async (req, res) => {
 app.get('/api/crm/chatbot-photos', requireAuth, async (_req, res) => {
   try { res.json(await getChatbotPhotos()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/crm/chatbot-photos', requireAuth, upload.single('file'), async (req, res) => {
+app.post('/api/crm/chatbot-photos', requireAuth, async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream({ folder: 'chatbot_photos', resource_type: 'image' }, (err, r) => {
-        if (err) reject(err); else resolve(r);
-      }).end(req.file.buffer);
-    });
-    const id = await saveChatbotPhoto({ url: result.secure_url, public_id: result.public_id, caption: req.body.caption || '' });
-    res.json({ id, url: result.secure_url, public_id: result.public_id, caption: req.body.caption || '' });
+    const { url, public_id, caption } = req.body || {};
+    if (!url) return res.status(400).json({ error: 'url required' });
+    const id = await saveChatbotPhoto({ url, public_id: public_id || '', caption: caption || '' });
+    res.json({ id, url, public_id: public_id || '', caption: caption || '' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/crm/chatbot-photos/:id', requireAuth, async (req, res) => {
   try {
     const publicId = await deleteChatbotPhoto(Number(req.params.id));
-    if (publicId) await cloudinary.uploader.destroy(publicId);
+    if (publicId) await cloudinaryDelete(publicId);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -1004,8 +1004,9 @@ const TrendsTab = ({ theme, accentColor }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const mutedColor = theme === 'dark' ? 'text-white/30' : 'text-neutral-400';
+  const cardClass = theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5';
 
-  useEffect(() => { axios.get('/api/history?limit=20').then(r => setHistory(r.data || [])).catch(() => { }).finally(() => setLoading(false)); }, []);
+  useEffect(() => { axios.get('/api/history?limit=20').then(r => setHistory(r.data || [])).catch(() => {}).finally(() => setLoading(false)); }, []);
 
   if (loading) return <div className="flex justify-center py-24"><div className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: accentColor }} /></div>;
   if (history.length < 2) return (
@@ -1018,85 +1019,157 @@ const TrendsTab = ({ theme, accentColor }) => {
 
   const parseNum = v => parseFloat(String(v || '0').replace(/[^0-9.]/g, '')) || 0;
   const latest = history[history.length - 1];
+  const prevSnap = history[history.length - 2];
+  const getLabel = h => h.label || new Date(h.snapped_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
+
   const metrics = [
     { key: 'goals', label: 'Goals', color: accentColor },
     { key: 'assists', label: 'Assists', color: '#3b82f6' },
-    { key: 'pass_accuracy', label: 'Pass Acc %', color: '#10b981' },
-    { key: 'shot_conversion', label: 'Shot Conv %', color: '#f59e0b' },
+    { key: 'pass_accuracy', label: 'Pass %', color: '#10b981' },
+    { key: 'shot_conversion', label: 'Shot Conv', color: '#f59e0b' },
     { key: 'dribble_success', label: 'Dribble %', color: '#8b5cf6' },
   ];
 
+  const donutValues = metrics.map(m => parseNum(latest[m.key]));
+  const donutMax = Math.max(...donutValues, 1);
+  const donutNorm = donutValues.map(v => Math.round((v / donutMax) * 100));
+  const donutTotal = donutNorm.reduce((a, b) => a + b, 0) || 1;
+  const R = 52, CX = 80, CY = 80, SW = 16;
+  const circ = 2 * Math.PI * R;
+  let cumOff = 0;
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+
       {/* Delta cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {metrics.map(({ key, label, color }) => {
-          const prev = history[history.length - 2];
+        {metrics.map(({ key, label, color }, i) => {
           const cur = parseNum(latest[key]);
-          const prv = parseNum(prev?.[key]);
+          const prv = parseNum(prevSnap?.[key]);
           const d = cur - prv;
           return (
-            <div key={key} className={`p-5 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
+            <motion.div key={key}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07, duration: 0.4 }}
+              className={`p-5 rounded-2xl border ${cardClass}`}>
               <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${mutedColor}`}>{label}</p>
               <p className="text-2xl font-black" style={{ color }}>{cur}</p>
-              {d !== 0 && <p className={`text-[10px] font-bold mt-1 ${d > 0 ? 'text-green-500' : 'text-red-400'}`}>{d > 0 ? '▲' : '▼'} {Math.abs(d).toFixed(1)}</p>}
-            </div>
+              {d !== 0 && (
+                <p className={`text-[10px] font-bold mt-1 ${d > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                  {d > 0 ? '▲' : '▼'} {Math.abs(d).toFixed(1)}
+                </p>
+              )}
+            </motion.div>
           );
         })}
       </div>
 
-      {/* Sparklines */}
+      {/* Animated bar charts — one per metric */}
       {metrics.map(({ key, label, color }, mi) => {
         const values = history.map(h => parseNum(h[key]));
-        const max = Math.max(...values, 1);
-        const labels = history.map(h => h.label || new Date(h.snapped_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }));
-        const W = 600, H = 90, pad = 14;
-        const coords = values.map((v, i) => ({
-          x: pad + (i / (values.length - 1 || 1)) * (W - pad * 2),
-          y: H - pad - (v / max) * (H - pad * 2),
-        }));
-        const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
-        const fillD = pathD + ` L ${coords[coords.length - 1].x} ${H - pad} L ${coords[0].x} ${H - pad} Z`;
-        const maxShow = 4;
-        const shownIdx = new Set([0, labels.length - 1]);
-        if (labels.length > 2) { const step = Math.max(1, Math.floor((labels.length - 1) / (maxShow - 1))); for (let i = step; i < labels.length - 1; i += step) shownIdx.add(i); }
+        const barMax = Math.max(...values, 1);
+        const BAR_H = 96;
         return (
-          <div key={key} className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-neutral-50 border-black/5'}`}>
-            <div className="flex items-center justify-between mb-4">
+          <motion.div key={key}
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 + mi * 0.1, duration: 0.45 }}
+            className={`p-6 rounded-2xl border ${cardClass}`}>
+            <div className="flex items-center justify-between mb-5">
               <p className={`text-[10px] font-black uppercase tracking-widest ${mutedColor}`}>{label}</p>
-              <motion.span className="text-xs font-black" style={{ color }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 + mi * 0.1 }}>{parseNum(latest[key])}</motion.span>
+              <span className="text-sm font-black" style={{ color }}>{parseNum(latest[key])}</span>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-visible">
-              <motion.path d={fillD} fill={color + '18'} stroke="none" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 + mi * 0.1 }} />
-              <motion.path
-                d={pathD}
-                fill="none"
-                stroke={color}
-                strokeWidth="2.5"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 1.3, delay: 0.2 + mi * 0.12, ease: [0.25, 0.46, 0.45, 0.94] }}
-              />
-              {coords.map((c, i) => (
-                <motion.circle key={i} cx={c.x} cy={c.y} r="4" fill={color} stroke={theme === 'dark' ? '#111' : 'white'} strokeWidth="1.5"
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.9 + mi * 0.1 + i * 0.05, duration: 0.2, type: 'spring', stiffness: 300 }}
-                />
-              ))}
-            </svg>
-            <div className="flex justify-between mt-2">
-              {labels.map((l, i) => (
-                shownIdx.has(i) ? (
-                  <span key={i} className={`text-[9px] font-medium ${mutedColor}`} style={{ textAlign: i === 0 ? 'left' : i === labels.length - 1 ? 'right' : 'center' }}>{l}</span>
-                ) : <span key={i} className="flex-1" />
-              ))}
+            <div className="flex items-end gap-1.5" style={{ height: BAR_H + 'px' }}>
+              {values.map((v, i) => {
+                const bh = Math.max(Math.round((v / barMax) * BAR_H), v > 0 ? 4 : 0);
+                const isLatest = i === values.length - 1;
+                const alpha = isLatest ? 1 : 0.28 + (i / Math.max(values.length - 1, 1)) * 0.48;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <motion.div
+                      className="w-full rounded-t-lg relative overflow-hidden"
+                      style={{ height: bh + 'px', backgroundColor: color, opacity: alpha, originY: 1 }}
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
+                      transition={{ duration: 0.6, delay: 0.3 + mi * 0.08 + i * 0.045, ease: [0.34, 1.56, 0.64, 1] }}
+                    >
+                      {isLatest && (
+                        <motion.div
+                          className="absolute inset-0"
+                          style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent)', width: '60%' }}
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
+                        />
+                      )}
+                    </motion.div>
+                    {(i === 0 || i === values.length - 1) && (
+                      <span className={`text-[8px] mt-1.5 text-center leading-tight ${mutedColor}`}
+                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                        {getLabel(history[i])}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </motion.div>
         );
       })}
+
+      {/* Donut chart — relative strengths of latest snapshot */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.75, duration: 0.45 }}
+        className={`p-6 rounded-2xl border ${cardClass}`}>
+        <p className={`text-[10px] font-black uppercase tracking-widest mb-6 ${mutedColor}`}>
+          Relative Strengths — {getLabel(latest)}
+        </p>
+        <div className="flex flex-col sm:flex-row items-center gap-8">
+          <svg viewBox="0 0 160 160" className="w-36 h-36 shrink-0">
+            <circle cx={CX} cy={CY} r={R} fill="none"
+              stroke={theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}
+              strokeWidth={SW} />
+            {metrics.map(({ color }, i) => {
+              const segPct = donutNorm[i] / donutTotal;
+              const segLen = segPct * circ;
+              const thisCum = cumOff;
+              cumOff += segLen;
+              const dashOff = circ / 4 - thisCum;
+              return (
+                <motion.circle key={i}
+                  cx={CX} cy={CY} r={R}
+                  fill="none" stroke={color} strokeWidth={SW}
+                  strokeLinecap="butt"
+                  style={{ transform: 'rotate(-90deg)', transformOrigin: CX + 'px ' + CY + 'px' }}
+                  strokeDashoffset={dashOff}
+                  initial={{ strokeDasharray: '0 ' + circ }}
+                  animate={{ strokeDasharray: segLen + ' ' + (circ - segLen) }}
+                  transition={{ duration: 1.1, delay: 0.9 + i * 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+                />
+              );
+            })}
+          </svg>
+          <div className="flex-1 w-full space-y-3">
+            {metrics.map(({ label, color }, i) => {
+              const pct = Math.round((donutNorm[i] / donutTotal) * 100);
+              return (
+                <div key={label}>
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className={`font-bold ${mutedColor}`}>{label}</span>
+                    <span className="font-black" style={{ color }}>{donutValues[i]}</span>
+                  </div>
+                  <div className={`h-1.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+                    <motion.div className="h-full rounded-full"
+                      style={{ backgroundColor: color }}
+                      initial={{ width: 0 }}
+                      animate={{ width: pct + '%' }}
+                      transition={{ duration: 0.9, delay: 0.9 + i * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+
     </div>
   );
 };
@@ -1643,10 +1716,12 @@ const ChatbotProfileTab = ({ theme, accentColor }) => {
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('caption', captionInput);
-      const res = await axios.post('/api/crm/chatbot-photos', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const cld = await cloudinaryUpload(file, 'chatbot');
+      const res = await axios.post('/api/crm/chatbot-photos', {
+        url: cld.secure_url,
+        public_id: cld.public_id,
+        caption: captionInput,
+      });
       setPhotos(prev => [res.data, ...prev]);
       setCaptionInput('');
       if (fileRef.current) fileRef.current.value = '';

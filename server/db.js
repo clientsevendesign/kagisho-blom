@@ -95,14 +95,14 @@ export const bootstrapSchema = async () => {
     )`,
     `CREATE TABLE IF NOT EXISTS chatbot_profile (
       id   INTEGER PRIMARY KEY DEFAULT 1,
-      data TEXT    DEFAULT ''{}''
+      data TEXT    DEFAULT '{}'
     )`,
     `CREATE TABLE IF NOT EXISTS chatbot_photos (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       url         TEXT    NOT NULL,
-      public_id   TEXT    NOT NULL DEFAULT '''',
-      caption     TEXT    DEFAULT '''',
-      uploaded_at TEXT    DEFAULT (datetime(''now''))
+      public_id   TEXT    NOT NULL DEFAULT '',
+      caption     TEXT    DEFAULT '',
+      uploaded_at TEXT    DEFAULT (datetime('now'))
     )`,
   ];
 

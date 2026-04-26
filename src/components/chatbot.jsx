@@ -14,7 +14,7 @@ const STARTER_SUGGESTIONS = [
   "Quiz me — how well do you know me?",
 ];
 
-const ChatMessage = ({ msg, accentColor, theme }) => {
+const ChatMessage = ({ msg, accentColor, theme, onQuizAnswer }) => {
   const isBot = msg.role === 'assistant';
   const isDark = theme === 'dark';
   const textColor = isDark ? 'text-white' : 'text-neutral-900';
@@ -67,6 +67,35 @@ const ChatMessage = ({ msg, accentColor, theme }) => {
     );
   }
 
+
+  if (msg.type === 'quiz') {
+    return (
+      <div className="flex gap-2 items-start">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-white"
+          style={{ backgroundColor: accentColor }}>
+          <Bot size={14} />
+        </div>
+        <div className="space-y-3 flex-1">
+          <div>
+            <p className={"text-[9px] font-bold uppercase tracking-widest mb-1.5 opacity-50 " + textColor}>
+              Q{msg.qNum}/{msg.total}
+            </p>
+            <p className={"text-sm font-semibold leading-snug " + textColor}>{msg.q}</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {(msg.opts || []).map((opt, oi) => (
+              <button key={oi} onClick={() => onQuizAnswer && onQuizAnswer(opt)}
+                disabled={!onQuizAnswer}
+                className={"w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border transition " + (isDark ? "border-white/10 text-white/70 hover:border-white/30 hover:bg-white/5 disabled:opacity-30" : "border-black/10 text-neutral-700 hover:border-black/25 hover:bg-neutral-100 disabled:opacity-30")}>
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex gap-2 items-end ${isBot ? '' : 'flex-row-reverse'}`}>
       {isBot && (
@@ -113,7 +142,7 @@ const Chatbot = ({ accentColor, theme, player }) => {
 
   const makeGreeting = () => ({
     role: 'assistant',
-    content: `Hey, Kagisho here.`,
+    content: 'Hey, Kagisho here.',
   });
 
   const [open, setOpen] = useState(false);
@@ -129,16 +158,16 @@ const Chatbot = ({ accentColor, theme, player }) => {
   const [quiz, setQuiz] = useState(null);
 
   const _shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
-  const _nearby = (n) => _shuffle([n, n+1, n+3, Math.max(0,n-1)].map(String)).slice(0,4);
+  const _nearby = (n) => _shuffle([n, n + 1, n + 3, Math.max(0, n - 1)].map(String)).slice(0, 4);
 
   const buildQuestions = () => {
     const p = player || {};
     return [
-      { q: `What position does ${(p.name||'Kagisho').split(' ')[0]} play?`, opts: _shuffle(['Midfielder','Striker','Goalkeeper','Defender']), correct: p.position || 'Midfielder' },
-      { q: 'How many goals this season?', opts: _nearby(Number(p.goals)||0), correct: String(Number(p.goals)||0) },
-      { q: 'Which club does he play for?', opts: _shuffle([p.club||'Kimberley United FC','Orlando Pirates','Mamelodi Sundowns','Kaizer Chiefs']), correct: p.club || 'Kimberley United FC' },
-      { q: 'What is his preferred foot?', opts: _shuffle(['Right','Left','Both','Either']), correct: p.preferred_foot || 'Right' },
-      { q: 'What jersey number does he wear?', opts: _shuffle([String(p.jersey_number||'15'),'10','7','8']), correct: String(p.jersey_number||'15') },
+      { q: `What position does ${(p.name || 'Kagisho').split(' ')[0]} play?`, opts: _shuffle(['Midfielder', 'Striker', 'Goalkeeper', 'Defender']), correct: p.position || 'Midfielder' },
+      { q: 'How many goals this season?', opts: _nearby(Number(p.goals) || 0), correct: String(Number(p.goals) || 0) },
+      { q: 'Which club does he play for?', opts: _shuffle([p.club || 'Kimberley United FC', 'Orlando Pirates', 'Mamelodi Sundowns', 'Kaizer Chiefs']), correct: p.club || 'Kimberley United FC' },
+      { q: 'What is his preferred foot?', opts: _shuffle(['Right', 'Left', 'Both', 'Either']), correct: p.preferred_foot || 'Right' },
+      { q: 'What jersey number does he wear?', opts: _shuffle([String(p.jersey_number || '15'), '10', '7', '8']), correct: String(p.jersey_number || '15') },
     ];
   };
 
@@ -146,34 +175,31 @@ const Chatbot = ({ accentColor, theme, player }) => {
     const questions = buildQuestions();
     setQuiz({ questions, idx: 0, score: 0 });
     setMessages(prev => [...prev,
-      { role: 'assistant', content: "Let's go! 5 quick questions — how well do you know me?" },
-      { role: 'assistant', type: 'quiz', ...questions[0], qNum: 1, total: questions.length, onAnswer: answerQuiz },
+    { role: 'assistant', content: "Let's go! 5 quick questions — how well do you know me?" },
+    { role: 'assistant', type: 'quiz', ...questions[0], qNum: 1, total: questions.length },
     ]);
   };
 
   const answerQuiz = (selected) => {
-    setQuiz(prev => {
-      if (!prev) return null;
-      const cur = prev.questions[prev.idx];
-      const isCorrect = selected === cur.correct;
-      const newScore = prev.score + (isCorrect ? 1 : 0);
-      const newIdx = prev.idx + 1;
-      const done = newIdx >= prev.questions.length;
-      setMessages(msgs => {
-        const next = [...msgs,
-          { role: 'user', content: selected },
-          { role: 'assistant', content: isCorrect ? 'Correct!' : `Not quite — it is "${cur.correct}".` },
-        ];
-        if (!done) {
-          next.push({ role: 'assistant', type: 'quiz', ...prev.questions[newIdx], qNum: newIdx + 1, total: prev.questions.length, onAnswer: answerQuiz });
-        } else {
-          const pct = Math.round((newScore / prev.questions.length) * 100);
-          next.push({ role: 'assistant', content: `${newScore}/${prev.questions.length} — ${pct}%. ${pct>=80?'You really know me!':pct>=60?'Solid fan!':'We need to get acquainted better.'}` });
-        }
-        return next;
-      });
-      return done ? null : { ...prev, idx: newIdx, score: newScore };
-    });
+    if (!quiz) return;
+    const cur = quiz.questions[quiz.idx];
+    const isCorrect = selected === cur.correct;
+    const newScore = quiz.score + (isCorrect ? 1 : 0);
+    const newIdx = quiz.idx + 1;
+    const done = newIdx >= quiz.questions.length;
+    const msgUpdates = [
+      { role: 'user', content: selected },
+      { role: 'assistant', content: isCorrect ? 'Correct!' : 'Not quite — it' + "'" + 's "' + cur.correct + '".' },
+    ];
+    if (!done) {
+      msgUpdates.push({ role: 'assistant', type: 'quiz', ...quiz.questions[newIdx], qNum: newIdx + 1, total: quiz.questions.length });
+    } else {
+      const pct = Math.round((newScore / quiz.questions.length) * 100);
+      const verdict = pct >= 80 ? 'You really know me!' : pct >= 60 ? 'Solid fan!' : 'We need to get acquainted better.';
+      msgUpdates.push({ role: 'assistant', content: newScore + '/' + quiz.questions.length + ' — ' + pct + '%. ' + verdict });
+    }
+    setMessages(msgs => [...msgs, ...msgUpdates]);
+    setQuiz(done ? null : { ...quiz, idx: newIdx, score: newScore });
   };
 
   useEffect(() => {
@@ -304,7 +330,7 @@ const Chatbot = ({ accentColor, theme, player }) => {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
               {messages.map((msg, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
-                  <ChatMessage msg={msg} accentColor={ac} theme={theme} />
+                  <ChatMessage msg={msg} accentColor={ac} theme={theme} onQuizAnswer={quiz ? answerQuiz : null} />
                 </motion.div>
               ))}
               {loading && (
