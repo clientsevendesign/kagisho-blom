@@ -16,6 +16,8 @@ const Stats = ({ player, theme, accentColor }) => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
+      <title>{player.name} Stats | Season Performance & Numbers</title>
+      <meta name="description" content={`${player.name} season stats: ${player.goals} goals, ${player.assists} assists, ${player.pass_accuracy} pass accuracy, ${player.dribble_success} dribble success. Full performance data for scouts and clubs.`} />
 
       {/* Header */}
       <div>

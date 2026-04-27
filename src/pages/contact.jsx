@@ -26,6 +26,8 @@ const Contact = ({ player, theme, accentColor, setHasSubmitted }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto">
+      <title>Contact {player.name} | Scout & Agent Inquiries</title>
+      <meta name="description" content={`Get in touch with ${player.name} for trial opportunities, transfers or professional inquiries. Direct contact for scouts, clubs and agents.`} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
 
         {/* Left — info */}

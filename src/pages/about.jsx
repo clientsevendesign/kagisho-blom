@@ -15,6 +15,8 @@ const About = ({ player, theme, accentColor, settings }) => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-16">
+      <title>About {player.name} | {player.nationality} Professional Footballer</title>
+      <meta name="description" content={`Learn about ${player.name}, ${player.age}-year-old ${player.nationality} ${player.position} at ${player.club}. Career history, biography and player profile.`} />
 
       {/* ── Header + bio ───────────────────────────────────────────────── */}
       <div>

@@ -43,8 +43,26 @@ const Home = ({ player, theme, accentColor, settings }) => {
 
   const upcomingFixtures = (fixtures.upcoming || []).slice(0, 3);
 
+  const siteUrl = import.meta.env.VITE_SITE_URL || '';
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: player.name,
+    jobTitle: player.position,
+    nationality: player.nationality,
+    description: player.bio,
+    sport: 'Association Football',
+    memberOf: { '@type': 'SportsTeam', name: player.club, sport: 'Association Football' },
+    url: siteUrl,
+    sameAs: [player.instagram, player.facebook].filter(Boolean),
+    ...(player.email ? { contactPoint: { '@type': 'ContactPoint', email: player.email, contactType: 'agent' } } : {}),
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-24">
+      <title>{player.name} — Professional Footballer | {player.position} · {player.club}</title>
+      <meta name="description" content={`Official website of ${player.name}, ${player.age}-year-old ${player.nationality} professional ${player.position.toLowerCase()}. ${player.goals} goals and ${player.assists} assists this season. ${player.is_available ? 'Available for transfer.' : `At ${player.club}.`}`} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section>

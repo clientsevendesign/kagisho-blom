@@ -249,6 +249,8 @@ const Community = ({ player, theme, accentColor }) => {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-10">
+            <title>Support {player.name} | Join the Community</title>
+            <meta name="description" content={`Join the ${player.name} supporter community. Follow his football journey, leave a message on the wall and stay connected with his career.`} />
 
             {/* Header */}
             <div>

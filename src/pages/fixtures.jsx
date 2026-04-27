@@ -17,6 +17,8 @@ const Fixtures = ({ player, theme, accentColor }) => {
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-16">
+            <title>{player.name} Fixtures & Results | Upcoming Matches</title>
+            <meta name="description" content={`Upcoming matches and recent results for ${player.name} at ${player.club}. Full fixture list with dates, venues and match commentary.`} />
             <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] mb-3" style={{ color: accentColor }}>Match Schedule</p>
                 <h2 className={`text-6xl font-black uppercase ${textColor}`}>Fixtures</h2>

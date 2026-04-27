@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /login
+
+# Set VITE_SITE_URL in your .env and update the Sitemap line below with your actual domain
+Sitemap: https://yourdomain.com/sitemap.xml

@@ -47,6 +47,8 @@ const Media = ({ player, theme, accentColor }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <title>{player.name} Media | Photos, Videos & Highlights</title>
+      <meta name="description" content={`Official photo and video gallery for ${player.name}. Match highlights, training footage, certificates and press coverage from ${player.club}.`} />
       {/* Header */}
       <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
