@@ -142,7 +142,7 @@ const Chatbot = ({ accentColor, theme, player }) => {
 
   const makeGreeting = () => ({
     role: 'assistant',
-    content: 'Hey, Kagisho here.',
+    content: 'Hey! Welcome to my page. Ask me anything.',
   });
 
   const [open, setOpen] = useState(false);
@@ -175,7 +175,7 @@ const Chatbot = ({ accentColor, theme, player }) => {
     const questions = buildQuestions();
     setQuiz({ questions, idx: 0, score: 0 });
     setMessages(prev => [...prev,
-    { role: 'assistant', content: "Let's go! 5 quick questions — how well do you know me?" },
+    { role: 'assistant', content: "Let's test your knowledge! 5 quick questions about me." },
     { role: 'assistant', type: 'quiz', ...questions[0], qNum: 1, total: questions.length },
     ]);
   };

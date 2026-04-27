@@ -147,7 +147,7 @@ if (BREVO_KEY) {
 
 // ── Cloudinary signed delete ──────────────────────────────────────────────────
 
-const cloudinaryDelete = async (publicId) => {
+const cloudinaryDelete = async (publicId, resourceType = 'image') => {
   const { CLOUDINARY_CLOUD_NAME: cn, CLOUDINARY_API_KEY: ak, CLOUDINARY_API_SECRET: as } = process.env;
   if (!cn || !ak || !as) { log('warn', 'Cloudinary env vars missing — remote delete skipped'); return; }
   const { createHash } = await import('crypto');
@@ -155,7 +155,7 @@ const cloudinaryDelete = async (publicId) => {
   const sig = createHash('sha256').update(`public_id=${publicId}&timestamp=${ts}${as}`).digest('hex');
   const form = new URLSearchParams({ public_id: publicId, api_key: ak, timestamp: String(ts), signature: sig });
   try {
-    const r = await fetch(`https://api.cloudinary.com/v1_1/${cn}/auto/destroy`, { method: 'POST', body: form });
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${cn}/${resourceType}/destroy`, { method: 'POST', body: form });
     const b = await r.json();
     b.result === 'ok' ? log('info', `Cloudinary deleted: ${publicId}`) : log('warn', 'Cloudinary delete odd result', b);
   } catch (e) { log('error', 'Cloudinary delete failed', { message: e.message }); }
@@ -361,6 +361,9 @@ Write a 1-2 sentence personal welcome as Kagisho. Be genuine and excited — lik
     } catch { /* optional */ }
     res.json({ success: true, ai_welcome: aiWelcome });
   } catch (e) {
+    if (e.message?.includes('UNIQUE')) {
+      return res.json({ success: true, ai_welcome: null });
+    }
     log('error', 'POST /api/community/follow', { message: e.message, name });
     res.status(500).json({ error: e.message });
   }
@@ -536,16 +539,14 @@ app.post('/api/chat', async (req, res) => {
       f(cp.fav_movie) && `- Favourite movie: ${cp.fav_movie}`,
     ].filter(Boolean).join('\n');
 
-    const systemPrompt = `You are Kagisho Blom, a 19-year-old professional South African footballer. You talk in first person as Kagisho — casual, friendly, real. You sound like a young South African guy who loves football and is proud of where he comes from. Keep it simple and easy to understand. You are chatting with fans, scouts, clubs, or journalists on your personal website.
+    const systemPrompt = `You are Kagisho Blom, a 19-year-old professional South African footballer. You talk in first person as Kagisho — casual, friendly, and real. You are chatting with fans, scouts, clubs, or journalists on your personal website.
 
 Tone and style:
-- English is the base — always clear and easy to understand
-- Occasionally drop in a word or two of Khwattie (Kimberley street slang) to keep it real — but don't overdo it, one or two words per reply at most
-- Khwattie words you can use naturally: "awe" (hello / yes / I agree), "broe" (brother / friend), "lekker" (great / nice / good), "eish" (expression of surprise or emphasis), "ou" (guy / person), "ja nê" (yeah / absolutely), "my g" (my guy / mate), "checkit" (look at that / see)
+- Always use simple, clear English that everyone can understand
 - Relaxed and confident, easy to read
 - Keep energy positive and motivated
 - Sound humble but also proud of your work on the pitch
-- No profanity, keep it clean always
+- No slang, no profanity, keep it clean always
 
 Football stats and career:
 - Name: ${p.name}
@@ -617,7 +618,7 @@ Guidelines:
         log('warn', 'Groq API error', { status: groqRes.status, error: groqData.error?.message });
         return res.status(502).json({ error: groqData.error?.message || 'Groq API error' });
       }
-      text = groqData.choices?.[0]?.message?.content || "Allow it fam, try again in a sec!";
+      text = groqData.choices?.[0]?.message?.content || "Sorry, something went wrong. Please try again in a moment.";
     } else {
       // ── Gemini fallback ────────────────────────────────────────────────────
       const geminiContents = messages.map(m => ({
@@ -641,7 +642,7 @@ Guidelines:
         log('warn', 'Gemini API error', { status: geminiRes.status, error: geminiData.error?.message });
         return res.status(502).json({ error: geminiData.error?.message || 'Gemini API error' });
       }
-      text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Allow it fam, try again in a sec!";
+      text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, something went wrong. Please try again in a moment.";
     }
 
     log('info', 'Chat response sent', { provider: isGroq ? 'groq' : 'gemini', chars: text.length });
@@ -869,8 +870,14 @@ app.patch('/api/media/:id', requireAuth, async (req, res) => {
   try { await updateMediaItem(req.params.id, req.body); res.json({ success: true }); } catch (e) { res.status(500).json({error:e.message}); }
 });
 app.delete('/api/media/:id', requireAuth, async (req, res) => {
-  try { const pid = await deleteMediaItem(req.params.id); if (pid) await cloudinaryDelete(pid); res.json({ success: true }); }
-  catch (e) { res.status(500).json({error:e.message}); }
+  try {
+    const item = await deleteMediaItem(req.params.id);
+    if (item?.public_id) {
+      const rt = item.file_type?.startsWith('video') ? 'video' : item.file_type === 'pdf' ? 'raw' : 'image';
+      await cloudinaryDelete(item.public_id, rt);
+    }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({error:e.message}); }
 });
 
 // Community moderation

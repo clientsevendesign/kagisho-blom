@@ -113,9 +113,16 @@ export const bootstrapSchema = async () => {
   for (const col of [
     `ALTER TABLE community_comments ADD COLUMN ai_reply TEXT DEFAULT ''`,
     `ALTER TABLE fixtures ADD COLUMN commentary TEXT DEFAULT ''`,
+    `ALTER TABLE media_items ADD COLUMN duration TEXT DEFAULT ''`,
+    `ALTER TABLE media_items ADD COLUMN file_type TEXT DEFAULT ''`,
   ]) {
     try { await db.execute({ sql: col, args: [] }); } catch { /* column already exists */ }
   }
+
+  // Migration: convert empty-string emails to NULL so multiple follows don't hit UNIQUE constraint
+  try {
+    await db.execute({ sql: `UPDATE community_follows SET email = NULL WHERE email = ''`, args: [] });
+  } catch { /* continue */ }
 
   // Seed default site settings
   const defaults = [
@@ -311,7 +318,7 @@ export const getCommunityFollows = async () => {
 export const saveCommunityFollow = async ({ name, message }) => {
   const result = await db.execute({
     sql: `INSERT INTO community_follows (name, email, message, status) VALUES (?,?,?,?)`,
-    args: [name, '', message || '', 'approved'],
+    args: [name, null, message || '', 'approved'],
   });
   return result.lastInsertRowid;
 };
@@ -374,10 +381,10 @@ export const saveMediaItem = async ({ category, title, url, public_id, thumbnail
 };
 
 export const deleteMediaItem = async (id) => {
-  const result = await db.execute({ sql: `SELECT public_id FROM media_items WHERE id = ?`, args: [id] });
-  const publicId = result.rows[0]?.public_id || null;
+  const result = await db.execute({ sql: `SELECT public_id, file_type FROM media_items WHERE id = ?`, args: [id] });
+  const row = result.rows[0] || null;
   await db.execute({ sql: `DELETE FROM media_items WHERE id = ?`, args: [id] });
-  return publicId;
+  return row ? { public_id: row.public_id, file_type: row.file_type || '' } : null;
 };
 
 export const updateMediaItem = async (id, { title, category }) => {
