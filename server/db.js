@@ -119,10 +119,37 @@ export const bootstrapSchema = async () => {
     try { await db.execute({ sql: col, args: [] }); } catch { /* column already exists */ }
   }
 
-  // Migration: convert empty-string emails to NULL so multiple follows don't hit UNIQUE constraint
+  // Migration: recreate community_follows without NOT NULL / UNIQUE on email
+  // so multiple people can follow without providing an email address.
   try {
-    await db.execute({ sql: `UPDATE community_follows SET email = NULL WHERE email = ''`, args: [] });
-  } catch { /* continue */ }
+    const info = await db.execute({
+      sql: `SELECT sql FROM sqlite_master WHERE type='table' AND name='community_follows'`,
+      args: [],
+    });
+    const tblSql = (info.rows[0]?.sql || '').toLowerCase();
+    const needsMigration = tblSql.includes('not null') || tblSql.includes('unique');
+    if (needsMigration) {
+      await db.execute({ sql: `DROP TABLE IF EXISTS _cf_bak`, args: [] });
+      await db.execute({ sql: `ALTER TABLE community_follows RENAME TO _cf_bak`, args: [] });
+      await db.execute({
+        sql: `CREATE TABLE community_follows (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          name        TEXT NOT NULL,
+          email       TEXT DEFAULT NULL,
+          message     TEXT DEFAULT '',
+          status      TEXT DEFAULT 'approved',
+          created_at  TEXT DEFAULT (datetime('now'))
+        )`,
+        args: [],
+      });
+      await db.execute({
+        sql: `INSERT INTO community_follows (id, name, email, message, status, created_at)
+              SELECT id, name, NULLIF(email, ''), message, status, created_at FROM _cf_bak`,
+        args: [],
+      });
+      await db.execute({ sql: `DROP TABLE _cf_bak`, args: [] });
+    }
+  } catch { /* migration failed or already done */ }
 
   // Seed default site settings
   const defaults = [
