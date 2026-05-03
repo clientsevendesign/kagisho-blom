@@ -35,3 +35,26 @@ body {
   transition: background-color 0.4s ease-in-out, color 0.4s ease-in-out;
   font-family: 'Inter', sans-serif;
 }
+
+/* ── Hero Slideshow: Ken Burns Animations ── */
+@keyframes kb-zoom-tl {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.14) translate(-2%, -1.5%); }
+}
+@keyframes kb-zoom-tr {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.14) translate(2%, -1.5%); }
+}
+@keyframes kb-zoom-out {
+  from { transform: scale(1.14) translate(1%, 1%); }
+  to   { transform: scale(1) translate(0, 0); }
+}
+@keyframes kb-pan-up {
+  from { transform: scale(1.12) translate(0, 2%); }
+  to   { transform: scale(1.1) translate(-0.5%, -2%); }
+}
+
+.kb-0 { animation: kb-zoom-tl 8s ease-out forwards; }
+.kb-1 { animation: kb-zoom-tr 8s ease-out forwards; }
+.kb-2 { animation: kb-zoom-out 8s ease-in-out forwards; }
+.kb-3 { animation: kb-pan-up 8s ease-out forwards; }

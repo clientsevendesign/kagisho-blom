@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Phone, Calendar, MapPin, Send, Mail, MessageSquare, User, Users, ChevronRight } from 'lucide-react';
 import axios from 'axios';
@@ -20,6 +20,36 @@ const Home = ({ player, theme, accentColor, settings }) => {
   const textColor = theme === 'dark' ? 'text-white' : 'text-neutral-900';
   const heroImg = settings?.hero_image_url || '';
   const profileImg = settings?.profile_image_url || '';
+
+  // Build hero image pool: heroImg first, then all uploaded photos
+  const heroImages = useMemo(() => {
+    const seen = new Set();
+    const imgs = [];
+    if (heroImg) { seen.add(heroImg); imgs.push(heroImg); }
+    for (const m of media) {
+      if (m.category === 'photo' && m.url && !seen.has(m.url)) {
+        seen.add(m.url); imgs.push(m.url);
+      }
+    }
+    return imgs;
+  }, [heroImg, media]);
+
+  const [heroSlideIdx, setHeroSlideIdx] = useState(0);
+  const [flashVisible, setFlashVisible] = useState(false);
+
+  // Reset slide index when image pool changes
+  useEffect(() => { setHeroSlideIdx(0); }, [heroImages.length]);
+
+  // Auto-advance slideshow every 5 seconds
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const id = setInterval(() => {
+      setHeroSlideIdx(i => (i + 1) % heroImages.length);
+      setFlashVisible(true);
+      setTimeout(() => setFlashVisible(false), 350);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [heroImages.length]);
 
   useEffect(() => {
     axios.get('/api/fixtures').then(r => setFixtures(r.data)).catch(() => { });
@@ -104,19 +134,95 @@ const Home = ({ player, theme, accentColor, settings }) => {
 
         {/* Main grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Hero image card */}
+          {/* Hero image slideshow card */}
           <div className={`md:col-span-2 md:row-span-2 rounded-[40px] relative overflow-hidden min-h-[420px] ${theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-neutral-200'}`}>
-            {heroImg
-              ? <img src={heroImg} alt={player.name} className="absolute inset-0 w-full h-full object-cover object-top" />
-              : (
-                <div className="absolute inset-0 flex items-end" style={{ background: `linear-gradient(135deg, ${accentColor}22 0%, #000 100%)` }}>
+
+            {/* Slides */}
+            <AnimatePresence mode="sync">
+              {heroImages.length > 0 ? (
+                <motion.div
+                  key={heroSlideIdx}
+                  className="absolute inset-0"
+                  initial={{ opacity: 0, scale: 1.07 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.04 }}
+                  transition={{ duration: 0.85, ease: [0.25, 0.1, 0.25, 1] }}
+                >
+                  <img
+                    src={heroImages[heroSlideIdx]}
+                    alt={player.name}
+                    className={`absolute inset-0 w-full h-full object-cover object-top kb-${heroSlideIdx % 4}`}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="gradient"
+                  className="absolute inset-0 flex items-end"
+                  style={{ background: `linear-gradient(135deg, ${accentColor}22 0%, #000 100%)` }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
                   <div className="p-10">
                     <p className="font-black text-8xl italic leading-none mb-2" style={{ color: accentColor }}>{player.jersey_number || '15'}</p>
                   </div>
-                </div>
-              )
-            }
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Stadium-light flash on transition */}
+            <AnimatePresence>
+              {flashVisible && (
+                <motion.div
+                  key="flash"
+                  className="absolute inset-0 z-30 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.45) 0%, transparent 75%)' }}
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                />
+              )}
+            </AnimatePresence>
+
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+
+            {/* Dot / pill indicators */}
+            {heroImages.length > 1 && (
+              <div className="absolute top-6 right-6 z-20 flex items-center gap-1.5">
+                {heroImages.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      if (i === heroSlideIdx) return;
+                      setHeroSlideIdx(i);
+                      setFlashVisible(true);
+                      setTimeout(() => setFlashVisible(false), 350);
+                    }}
+                    className="rounded-full transition-all duration-400"
+                    style={{
+                      width: i === heroSlideIdx ? 22 : 6,
+                      height: 6,
+                      backgroundColor: i === heroSlideIdx ? accentColor : 'rgba(255,255,255,0.35)',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {heroImages.length > 1 && (
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] z-20 bg-white/10 overflow-hidden" style={{ borderRadius: '0 0 40px 40px' }}>
+                <motion.div
+                  key={`pb-${heroSlideIdx}`}
+                  className="h-full origin-left"
+                  style={{ backgroundColor: accentColor }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 5, ease: 'linear' }}
+                />
+              </div>
+            )}
+
             <div className="absolute bottom-10 left-10 z-20 text-white">
               <p className="font-black text-6xl italic leading-none mb-2" style={{ color: accentColor }}>{player.jersey_number || '15'}</p>
               <h3 className="text-3xl font-black uppercase leading-none">{player.position}</h3>
