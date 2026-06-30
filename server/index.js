@@ -69,28 +69,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Keep-alive ping (prevents Render free tier sleep) ────────────────────────
-// Self-pings every 13 minutes. Render sleeps after 15 min of inactivity.
-
-const BACKEND_URL = process.env.RENDER_EXTERNAL_URL || process.env.VITE_API_URL || '';
-const startKeepAlive = () => {
-  if (!BACKEND_URL) {
-    log('info', 'Keep-alive: no RENDER_EXTERNAL_URL set — skipping (local dev)');
-    return;
-  }
-  const interval = 13 * 60 * 1000; // 13 minutes
-  setInterval(async () => {
-    try {
-      await fetch(`${BACKEND_URL}/api/ping`);
-      log('info', 'Keep-alive ping sent ✓');
-    } catch (e) {
-      log('warn', 'Keep-alive ping failed', { message: e.message });
-    }
-  }, interval);
-  log('info', `Keep-alive started — pinging every 13 min → ${BACKEND_URL}`);
-};
-
-app.get('/api/ping', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // ── Brevo email (direct REST v3 — no SDK) ────────────────────────────────────
 
@@ -990,7 +968,7 @@ bootstrapSchema()
       log('info', `🤖 AI: ${aiKeyStatus}`);
       log('info', `☁️  Cloudinary: ${process.env.CLOUDINARY_CLOUD_NAME ? `✓ cloud=${process.env.CLOUDINARY_CLOUD_NAME}` : '✗ NOT SET'}`);
       log('info', `🌐 Client origin: ${process.env.CLIENT_ORIGIN || '* (all)'}`);
-      startKeepAlive();
+
     });
   })
   .catch(err => { console.error('Schema bootstrap failed:', err); process.exit(1); });
